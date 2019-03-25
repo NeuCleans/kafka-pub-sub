@@ -8,7 +8,7 @@ Pub Sub wrapper around [kafka-node](https://github.com/SOHU-Co/kafka-node)
 
 ### Prerequisites
 
-* [kafka](https://github.com/wurstmeister/kafka-docker)
+* [kafka](https://github.com/NeuCleans/kafka-docker/tree/pub-sub)
 
 ### Setup
 
