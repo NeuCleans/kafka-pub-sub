@@ -1,0 +1,18 @@
+{
+  "name": "kafka-pub-sub",
+  "version": "1.0.0",
+  "description": "Neu Kafka Pub Sub Helpers",
+  "main": "index.js",
+  "repository": "https://github.com/NeuCleans/kafka-pub-sub",
+  "author": "Claudius Mbemba",
+  "license": "MIT",
+  "dependencies": {
+    "@types/node": "^11.11.6",
+    "kafka-node": "^4.0.3",
+    "uuid": "^3.3.2"
+  },
+  "scripts": {
+    "clean": "rm -rf ./release/; tsc; echo 'CLEAN DONE'",
+    "watch": "tsc -w -p tsconfig.json"
+  }
+}
