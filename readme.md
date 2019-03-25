@@ -26,7 +26,7 @@ async function sampleKafkaPubSub() {
     await ServiceConsumer.init(<params>);
     ServiceConsumer.subscribe(topic);
     ServiceConsumer.listen((message) => {
-        Logger.log(`Message: ${JSON.stringify(message, null, 2)}`);
+        console.log(`Message: ${JSON.stringify(message, null, 2)}`);
     });
 
     setInterval(async () => {
@@ -35,7 +35,7 @@ async function sampleKafkaPubSub() {
         try {
             await ServiceProducer.send([msg]);
         } catch (error) {
-            Logger.error(error.stack);
+            console.error(error.stack);
         }
     }, 5 * 1000);
 }
@@ -50,7 +50,7 @@ async function sampleKafkaPubSubHL() {
     await ServiceConsumerGroup.init(<params>)
     ServiceConsumerGroup.subscribe(topic);
     ServiceConsumerGroup.listen((message) => {
-        Logger.log(`Message: ${JSON.stringify(message, null, 2)}`);
+        console.log(`Message: ${JSON.stringify(message, null, 2)}`);
     });
 
     setInterval(async () => {
@@ -59,7 +59,7 @@ async function sampleKafkaPubSubHL() {
         try {
             await ServiceHLProducer.send([msg]);
         } catch (error) {
-            Logger.error(error.stack);
+            console.error(error.stack);
         }
     }, 5 * 1000);
 }
