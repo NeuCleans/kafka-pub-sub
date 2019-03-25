@@ -49,10 +49,11 @@ async function sampleKafkaPubSub() {
 async function sampleKafkaPubSubHL() {
     const topic = 'SOME_TOPIC_ID'
 
-    ServiceHLProducer.Logger = new Logger();
-    ServiceHLProducer.SERVICE_ID = SERVICE_ID;
+    ServiceConsumerGroup.Logger = new Logger();
+    ServiceConsumerGroup.SERVICE_ID = SERVICE_ID;
 
-    await ServiceConsumerGroup.subscribe(topic);
+    await ServiceConsumerGroup.init(<options>);  // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
+    ServiceConsumerGroup.subscribe(topic);
     ServiceConsumerGroup.listen((message) => {
         console.log(`Message: ${JSON.stringify(message, null, 2)}`);
     });
