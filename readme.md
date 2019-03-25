@@ -23,8 +23,8 @@ Pub Sub wrapper around [kafka-node](https://github.com/SOHU-Co/kafka-node)
 async function sampleKafkaPubSub() {
     const topic = 'SOME_TOPIC_ID'
 
-    ServiceProducer.Logger = new Logger();
-    ServiceProducer.SERVICE_ID = SERVICE_ID;
+    ServiceConsumer.Logger = new Logger();
+    ServiceConsumer.SERVICE_ID = SERVICE_ID;
 
     await ServiceConsumer.subscribe(topic);
     ServiceConsumer.listen((message) => {
