@@ -6,15 +6,16 @@ import { KafkaClient, Producer } from "kafka-node";
 import { v4 } from "uuid";
 
 export class ServiceProducer {
-
-    private static client: Producer;
-    private static _client: KafkaClient;
-    static isConnected = false;
+    //set these
     static Logger: { log: Function, error: Function } = {
         log: (data) => { console.log(data) },
         error: (error) => { console.error(error) }
     };
     static SERVICE_ID: string = v4();
+
+    private static client: Producer;
+    private static _client: KafkaClient;
+    static isConnected = false;
 
     static async getClient() {
         if (!this.client) { await this.init(); }

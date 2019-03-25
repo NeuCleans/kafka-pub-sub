@@ -1,18 +1,15 @@
 import { Producer } from "kafka-node";
 export declare class ServiceProducer {
-    private static client;
-    private static _client;
-    static isConnected: boolean;
     static Logger: {
         log: Function;
         error: Function;
     };
     static SERVICE_ID: string;
+    private static client;
+    private static _client;
+    static isConnected: boolean;
     static getClient(): Promise<Producer>;
-    static init(Logger?: {
-        log: Function;
-        error: Function;
-    }, SERVICE_ID?: string): Promise<void>;
+    static init(): Promise<void>;
     static prepareMsgBuffer(data: {
         id?: string;
     }, action?: string): Buffer;

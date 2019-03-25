@@ -138,12 +138,12 @@ class ServiceProducer {
         });
     }
 }
-ServiceProducer.isConnected = false;
 ServiceProducer.Logger = {
     log: (data) => { console.log(data); },
     error: (error) => { console.error(error); }
 };
 ServiceProducer.SERVICE_ID = uuid_1.v4();
+ServiceProducer.isConnected = false;
 exports.ServiceProducer = ServiceProducer;
 ;
 //# sourceMappingURL=producer.js.map

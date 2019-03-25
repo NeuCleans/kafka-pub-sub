@@ -78,13 +78,13 @@ class ServiceHLProducer {
             });
         });
     }
-    static createTopic(topic) {
+    static createTopic(topic, kafkaTopicConfig = defaultOpts_1.defaultKafkaTopicConfig) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
                 yield this.init();
             }
             const _self = this;
-            const topicToCreate = Object.assign({ topic }, this.kafkaTopicConfig);
+            const topicToCreate = Object.assign({ topic }, kafkaTopicConfig);
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 const cb = (error, data) => {
                     if (error) {
@@ -146,7 +146,6 @@ ServiceHLProducer.Logger = {
     error: (error) => { console.error(error); }
 };
 ServiceHLProducer.SERVICE_ID = uuid_1.v4();
-ServiceHLProducer.kafkaTopicConfig = defaultOpts_1.defaultKafkaTopicConfig;
 ServiceHLProducer.isConnected = false;
 exports.ServiceHLProducer = ServiceHLProducer;
 ;

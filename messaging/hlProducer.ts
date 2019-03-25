@@ -5,16 +5,15 @@
 import { KafkaClient, Producer } from "kafka-node";
 import { v4 } from "uuid";
 import { defaultKafkaTopicConfig } from "./defaultOpts";
+import { KafkaTopicConfig } from "./interfaces";
 
 export class ServiceHLProducer {
-
     //set theses
     static Logger: { log: Function, error: Function } = {
         log: (data) => { console.log(data) },
         error: (error) => { console.error(error) }
     };
     static SERVICE_ID: string = v4();
-    static kafkaTopicConfig: any = defaultKafkaTopicConfig;
 
     private static client: Producer;
     private static _client: KafkaClient;
@@ -87,12 +86,12 @@ export class ServiceHLProducer {
         })
     }
 
-    static async createTopic(topic: string) {
+    static async createTopic(topic: string, kafkaTopicConfig: KafkaTopicConfig = defaultKafkaTopicConfig) {
         if (!this.client) { await this.init(); }
         const _self = this;
         const topicToCreate = {
             topic,
-            ...this.kafkaTopicConfig
+            ...kafkaTopicConfig
         }
         await new Promise(async (resolve, reject) => {
             const cb = (error, data) => {

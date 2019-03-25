@@ -21,8 +21,9 @@ class ServiceConsumerGroup {
             return this.client;
         });
     }
-    static init() {
+    static init(opts) {
         return __awaiter(this, void 0, void 0, function* () {
+            opts = opts || Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, { groupId: this.SERVICE_ID });
             const _self = this;
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 hlProducer_1.ServiceHLProducer.Logger = _self.Logger;
@@ -34,7 +35,7 @@ class ServiceConsumerGroup {
                         kafkaHost: process.env.KAFKA_HOST,
                         clientId: _self.SERVICE_ID
                     });
-                    const options = Object.assign({}, _self.kafkaConsumerGroupOpts, { kafkaHost: process.env.KAFKA_HOST });
+                    const options = Object.assign({}, opts, { kafkaHost: process.env.KAFKA_HOST });
                     _self.client = new kafka_node_1.ConsumerGroup(options, [_self.SERVICE_ID]);
                     _self.client.client = _self._client;
                     _self._client.on('ready', () => {
@@ -118,6 +119,5 @@ ServiceConsumerGroup.Logger = {
     error: (error) => { console.error(error); }
 };
 ServiceConsumerGroup.SERVICE_ID = uuid_1.v4();
-ServiceConsumerGroup.kafkaConsumerGroupOpts = defaultOpts_1.defaultKafkaConsumerGroupOpts;
 exports.ServiceConsumerGroup = ServiceConsumerGroup;
 //# sourceMappingURL=consumerGroup.js.map

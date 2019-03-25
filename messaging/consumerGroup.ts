@@ -2,27 +2,30 @@
 // https://bertrandszoghy.wordpress.com/2017/06/27/nodejs-querying-messages-in-apache-kafka/
 // https://stackoverflow.com/a/42579505/3562407 - consumergroups
 
-import { KafkaClient, ConsumerGroup } from 'kafka-node';
+import { KafkaClient, ConsumerGroup, ConsumerGroupOptions } from 'kafka-node';
 import { v4 } from "uuid";
 import { ServiceHLProducer } from './hlProducer';
 import { defaultKafkaConsumerGroupOpts } from './defaultOpts';
 
 export class ServiceConsumerGroup {
-    private static client: ConsumerGroup;
-    private static _client: KafkaClient;
+    //set theses
     static Logger: { log: Function, error: Function } = {
         log: (data) => { console.log(data) },
         error: (error) => { console.error(error) }
     };
     static SERVICE_ID: string = v4();
-    static kafkaConsumerGroupOpts: any = defaultKafkaConsumerGroupOpts;
+
+    private static client: ConsumerGroup;
+    private static _client: KafkaClient;
 
     static async getClient() {
         if (!this.client) { await this.init(); }
         return this.client;
     }
 
-    static async init() {
+    static async init(opts?: any) {
+        // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
+        opts = opts || Object.assign({}, defaultKafkaConsumerGroupOpts, { groupId: this.SERVICE_ID });
         const _self = this;
 
         await new Promise(async (resolve, reject) => {
@@ -37,9 +40,7 @@ export class ServiceConsumerGroup {
                         kafkaHost: process.env.KAFKA_HOST,
                         clientId: _self.SERVICE_ID
                     });
-                    // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
-                    const options = Object.assign({}, _self.kafkaConsumerGroupOpts,
-                        { kafkaHost: process.env.KAFKA_HOST });
+                    const options = Object.assign({}, opts, { kafkaHost: process.env.KAFKA_HOST });
                     _self.client = new ConsumerGroup(options, [_self.SERVICE_ID]) //topics can't be empty
                     //subscribe to service topic
                     _self.client.client = _self._client;
