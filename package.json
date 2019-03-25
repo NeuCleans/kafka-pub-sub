@@ -12,7 +12,7 @@
     "uuid": "^3.3.2"
   },
   "scripts": {
-    "clean": "rm -rf ./release/; tsc; echo 'CLEAN DONE'",
+    "clean": "rm -rf ./release/; tsc --declaration; echo 'CLEAN DONE'",
     "watch": "tsc -w -p tsconfig.json"
   }
 }
