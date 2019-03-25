@@ -8,35 +8,34 @@ import { defaultKafkaTopicConfig } from "./defaultOpts";
 
 export class ServiceHLProducer {
 
+    //set theses
+    static Logger: { log: Function, error: Function } = {
+        log: (data) => { console.log(data) },
+        error: (error) => { console.error(error) }
+    };
+    static SERVICE_ID: string = v4();
+    static kafkaTopicConfig: any = defaultKafkaTopicConfig;
+
     private static client: Producer;
     private static _client: KafkaClient;
     static isConnected = false;
-    static Logger: { log: Function, error: Function };
-    static SERVICE_ID: string;
-    static kafkaTopicConfig: any;
 
     static async getClient() {
         if (!this.client) { await this.init(); }
         return this.client;
     }
 
-    static async init(kafkaTopicConfig?: any, Logger?: { log: Function, error: Function }, SERVICE_ID?: string) {
-        this.kafkaTopicConfig = kafkaTopicConfig || defaultKafkaTopicConfig
-        this.Logger = Logger || {
-            log: (data) => { console.log(data) },
-            error: (error) => { console.error(error) }
-        };
-        this.SERVICE_ID = SERVICE_ID || v4();
+    static async init() {
         const _self = this;
 
         await new Promise((resolve, reject) => {
             if (_self.isConnected) { resolve(); }
 
-            Logger.log('Init HLProducer...');
+            _self.Logger.log('Init HLProducer...');
 
             _self._client = new KafkaClient({
                 kafkaHost: process.env.KAFKA_HOST,
-                clientId: SERVICE_ID
+                clientId: _self.SERVICE_ID
             });
 
             _self.client = new Producer(
@@ -49,14 +48,14 @@ export class ServiceHLProducer {
                 });
 
             _self._client.once('ready', async () => {
-                Logger.log('HLProducer:onReady - Ready....');
+                _self.Logger.log('HLProducer:onReady - Ready....');
                 _self.isConnected = true;
-                await _self.createTopic(SERVICE_ID); //create default mailbox for service
+                await _self.createTopic(_self.SERVICE_ID); //create default mailbox for service
                 resolve();
             });
 
             _self.client.on('error', (err) => {
-                Logger.error(`HLProducer:onError - ERROR: ${err.stack}`);
+                _self.Logger.error(`HLProducer:onError - ERROR: ${err.stack}`);
             });
         });
     }

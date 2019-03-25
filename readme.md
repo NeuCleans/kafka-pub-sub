@@ -23,8 +23,10 @@ Pub Sub wrapper around [kafka-node](https://github.com/SOHU-Co/kafka-node)
 async function sampleKafkaPubSub() {
     const topic = 'SOME_TOPIC_ID'
 
-    await ServiceConsumer.init(<params>);
-    ServiceConsumer.subscribe(topic);
+    ServiceProducer.Logger = new Logger();
+    ServiceProducer.SERVICE_ID = SERVICE_ID;
+
+    await ServiceConsumer.subscribe(topic);
     ServiceConsumer.listen((message) => {
         console.log(`Message: ${JSON.stringify(message, null, 2)}`);
     });
@@ -47,8 +49,10 @@ async function sampleKafkaPubSub() {
 async function sampleKafkaPubSubHL() {
     const topic = 'SOME_TOPIC_ID'
 
-    await ServiceConsumerGroup.init(<params>)
-    ServiceConsumerGroup.subscribe(topic);
+    ServiceHLProducer.Logger = new Logger();
+    ServiceHLProducer.SERVICE_ID = SERVICE_ID;
+
+    await ServiceConsumerGroup.subscribe(topic);
     ServiceConsumerGroup.listen((message) => {
         console.log(`Message: ${JSON.stringify(message, null, 2)}`);
     });

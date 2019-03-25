@@ -10,30 +10,28 @@ export class ServiceProducer {
     private static client: Producer;
     private static _client: KafkaClient;
     static isConnected = false;
-    static Logger: { log: Function, error: Function };
-    static SERVICE_ID: string;
+    static Logger: { log: Function, error: Function } = {
+        log: (data) => { console.log(data) },
+        error: (error) => { console.error(error) }
+    };
+    static SERVICE_ID: string = v4();
 
     static async getClient() {
         if (!this.client) { await this.init(); }
         return this.client;
     }
 
-    static async init(Logger?: { log: Function, error: Function }, SERVICE_ID?: string) {
-        this.Logger = Logger || {
-            log: (data) => { console.log(data) },
-            error: (error) => { console.error(error) }
-        };
-        this.SERVICE_ID = SERVICE_ID || v4();
+    static async init() {
         const _self = this;
 
         await new Promise((resolve, reject) => {
             if (_self.isConnected) { resolve(); }
 
-            Logger.log('Init Producer...');
+            _self.Logger.log('Init Producer...');
 
             _self._client = new KafkaClient({
                 kafkaHost: process.env.KAFKA_HOST,
-                clientId: SERVICE_ID
+                clientId: _self.SERVICE_ID
             });
 
             _self.client = new Producer(
@@ -45,13 +43,13 @@ export class ServiceProducer {
             );
 
             _self._client.once('ready', () => {
-                Logger.log('Producer:onReady - Ready....');
+                _self.Logger.log('Producer:onReady - Ready....');
                 _self.isConnected = true;
                 resolve();
             });
 
             _self.client.on('error', (err) => {
-                Logger.error(`Producer - ERROR: ${err.stack}`);
+                _self.Logger.error(`Producer - ERROR: ${err.stack}`);
             });
         });
     }

@@ -20,23 +20,17 @@ class ServiceHLProducer {
             return this.client;
         });
     }
-    static init(kafkaTopicConfig, Logger, SERVICE_ID) {
+    static init() {
         return __awaiter(this, void 0, void 0, function* () {
-            this.kafkaTopicConfig = kafkaTopicConfig || defaultOpts_1.defaultKafkaTopicConfig;
-            this.Logger = Logger || {
-                log: (data) => { console.log(data); },
-                error: (error) => { console.error(error); }
-            };
-            this.SERVICE_ID = SERVICE_ID || uuid_1.v4();
             const _self = this;
             yield new Promise((resolve, reject) => {
                 if (_self.isConnected) {
                     resolve();
                 }
-                Logger.log('Init HLProducer...');
+                _self.Logger.log('Init HLProducer...');
                 _self._client = new kafka_node_1.KafkaClient({
                     kafkaHost: process.env.KAFKA_HOST,
-                    clientId: SERVICE_ID
+                    clientId: _self.SERVICE_ID
                 });
                 _self.client = new kafka_node_1.Producer(_self._client, {
                     requireAcks: 1,
@@ -44,13 +38,13 @@ class ServiceHLProducer {
                     partitionerType: 2
                 });
                 _self._client.once('ready', () => __awaiter(this, void 0, void 0, function* () {
-                    Logger.log('HLProducer:onReady - Ready....');
+                    _self.Logger.log('HLProducer:onReady - Ready....');
                     _self.isConnected = true;
-                    yield _self.createTopic(SERVICE_ID);
+                    yield _self.createTopic(_self.SERVICE_ID);
                     resolve();
                 }));
                 _self.client.on('error', (err) => {
-                    Logger.error(`HLProducer:onError - ERROR: ${err.stack}`);
+                    _self.Logger.error(`HLProducer:onError - ERROR: ${err.stack}`);
                 });
             });
         });
@@ -147,6 +141,12 @@ class ServiceHLProducer {
         });
     }
 }
+ServiceHLProducer.Logger = {
+    log: (data) => { console.log(data); },
+    error: (error) => { console.error(error); }
+};
+ServiceHLProducer.SERVICE_ID = uuid_1.v4();
+ServiceHLProducer.kafkaTopicConfig = defaultOpts_1.defaultKafkaTopicConfig;
 ServiceHLProducer.isConnected = false;
 exports.ServiceHLProducer = ServiceHLProducer;
 ;

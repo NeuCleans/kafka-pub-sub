@@ -7,26 +7,27 @@ import { ServiceProducer } from './producer';
 import { v4 } from "uuid";
 
 export class ServiceConsumer {
+    //set theses
+    static Logger: { log: Function, error: Function } = {
+        log: (data) => { console.log(data) },
+        error: (error) => { console.error(error) }
+    };
+    static SERVICE_ID: string = v4();
+
     private static client: Consumer;
     private static _client: KafkaClient;
-    static Logger: { log: Function, error: Function };
-    static SERVICE_ID: string;
 
     static async getClient() {
         if (!this.client) { await this.init(); }
         return this.client;
     }
 
-    static async init(Logger?: { log: Function, error: Function }, SERVICE_ID?: string) {
-        this.Logger = Logger || {
-            log: (data) => { console.log(data) },
-            error: (error) => { console.error(error) }
-        };
-        this.SERVICE_ID = SERVICE_ID || v4();
-
+    static async init() {
         const _self = this;
-
         await new Promise(async (resolve, reject) => {
+            ServiceProducer.Logger = _self.Logger;
+            ServiceProducer.SERVICE_ID = _self.SERVICE_ID;
+
             await ServiceProducer.init()
                 .then(() => {
                     _self.Logger.log('Init Consumer...');

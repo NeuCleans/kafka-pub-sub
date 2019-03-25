@@ -19,34 +19,29 @@ class ServiceProducer {
             return this.client;
         });
     }
-    static init(Logger, SERVICE_ID) {
+    static init() {
         return __awaiter(this, void 0, void 0, function* () {
-            this.Logger = Logger || {
-                log: (data) => { console.log(data); },
-                error: (error) => { console.error(error); }
-            };
-            this.SERVICE_ID = SERVICE_ID || uuid_1.v4();
             const _self = this;
             yield new Promise((resolve, reject) => {
                 if (_self.isConnected) {
                     resolve();
                 }
-                Logger.log('Init Producer...');
+                _self.Logger.log('Init Producer...');
                 _self._client = new kafka_node_1.KafkaClient({
                     kafkaHost: process.env.KAFKA_HOST,
-                    clientId: SERVICE_ID
+                    clientId: _self.SERVICE_ID
                 });
                 _self.client = new kafka_node_1.Producer(_self._client, {
                     requireAcks: 1,
                     ackTimeoutMs: 100
                 });
                 _self._client.once('ready', () => {
-                    Logger.log('Producer:onReady - Ready....');
+                    _self.Logger.log('Producer:onReady - Ready....');
                     _self.isConnected = true;
                     resolve();
                 });
                 _self.client.on('error', (err) => {
-                    Logger.error(`Producer - ERROR: ${err.stack}`);
+                    _self.Logger.error(`Producer - ERROR: ${err.stack}`);
                 });
             });
         });
@@ -144,6 +139,11 @@ class ServiceProducer {
     }
 }
 ServiceProducer.isConnected = false;
+ServiceProducer.Logger = {
+    log: (data) => { console.log(data); },
+    error: (error) => { console.error(error); }
+};
+ServiceProducer.SERVICE_ID = uuid_1.v4();
 exports.ServiceProducer = ServiceProducer;
 ;
 //# sourceMappingURL=producer.js.map

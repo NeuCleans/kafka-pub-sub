@@ -20,15 +20,12 @@ class ServiceConsumer {
             return this.client;
         });
     }
-    static init(Logger, SERVICE_ID) {
+    static init() {
         return __awaiter(this, void 0, void 0, function* () {
-            this.Logger = Logger || {
-                log: (data) => { console.log(data); },
-                error: (error) => { console.error(error); }
-            };
-            this.SERVICE_ID = SERVICE_ID || uuid_1.v4();
             const _self = this;
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                producer_1.ServiceProducer.Logger = _self.Logger;
+                producer_1.ServiceProducer.SERVICE_ID = _self.SERVICE_ID;
                 yield producer_1.ServiceProducer.init()
                     .then(() => {
                     _self.Logger.log('Init Consumer...');
@@ -116,5 +113,10 @@ class ServiceConsumer {
         });
     }
 }
+ServiceConsumer.Logger = {
+    log: (data) => { console.log(data); },
+    error: (error) => { console.error(error); }
+};
+ServiceConsumer.SERVICE_ID = uuid_1.v4();
 exports.ServiceConsumer = ServiceConsumer;
 //# sourceMappingURL=consumer.js.map
