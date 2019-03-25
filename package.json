@@ -2,7 +2,7 @@
   "name": "kafka-pub-sub",
   "version": "1.0.0",
   "description": "Neu Kafka Pub Sub Helpers",
-  "main": "index.js",
+  "main": "./release/index.js",
   "repository": "https://github.com/NeuCleans/kafka-pub-sub",
   "author": "Claudius Mbemba",
   "license": "MIT",

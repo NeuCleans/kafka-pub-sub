@@ -1,6 +1,5 @@
 env*
 *node_modules*
-*release/
 build/
 server/
 .nyc_output/
