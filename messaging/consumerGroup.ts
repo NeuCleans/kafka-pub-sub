@@ -21,11 +21,11 @@ export class ServiceConsumerGroup {
     private static _client: KafkaClient;
 
     static async getClient() {
-        if (!this.client) { await this.init(); }
+        if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
         return this.client;
     }
 
-    static async init(consumerGroupOpts?: ConsumerGroupOptions, defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig) {
+    static async init(defaultTopic: string, defaultTopicOpts?: KafkaTopicConfig, consumerGroupOpts?: ConsumerGroupOptions) {
         // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
         consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, consumerGroupOpts) : (defaultKafkaConsumerGroupOpts as any);
         const _self = this;
@@ -38,12 +38,14 @@ export class ServiceConsumerGroup {
                 .then(() => {
                     _self.Logger.log('Init ConsumerGroup...');
 
+                    const kHost = process.env.KAFKA_HOST || 'localhost:9092';
+
                     _self._client = new KafkaClient({
-                        kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
+                        kafkaHost: kHost,
                         clientId: `${_self.clientIdPrefix}_${v4()}`
                     });
 
-                    const options = Object.assign({}, consumerGroupOpts, { kafkaHost: process.env.KAFKA_HOST });
+                    const options = Object.assign({}, consumerGroupOpts, { kafkaHost: kHost });
                     _self.client = new ConsumerGroup(options, [defaultTopic]) //topics can't be empty
                     //subscribe to service topic
                     _self.client.client = _self._client;
@@ -61,7 +63,7 @@ export class ServiceConsumerGroup {
     }
 
     static async subscribe(topic: string) {
-        if (!this.client) { await this.init(); }
+        if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
         const _self = this;
 
         await new Promise(async (resolve, reject) => {
@@ -80,7 +82,7 @@ export class ServiceConsumerGroup {
     }
 
     private static async addTopic(topic: string) {
-        if (!this.client) { await this.init(); }
+        if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
         const _self = this;
 
         const cb = (err, data) => {
@@ -99,7 +101,7 @@ export class ServiceConsumerGroup {
     }
 
     // static async commit() {
-    //     if (!this.client) { await this.init(); }
+    //     if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
     //     const _self = this;
     //     const cb = (err, data) => {
     //         this.Logger.log('ConsumerGroup:commit - Committing...');
@@ -113,7 +115,7 @@ export class ServiceConsumerGroup {
     // }
 
     static async listen(cb1?: (message) => any) {
-        if (!this.client) { await this.init(); }
+        if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
         const _self = this;
         this.client.on('message', (message) => {
             this.client.commit((err, data) => {

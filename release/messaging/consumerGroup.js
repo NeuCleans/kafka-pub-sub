@@ -16,12 +16,12 @@ class ServiceConsumerGroup {
     static getClient() {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
-                yield this.init();
+                throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first");
             }
             return this.client;
         });
     }
-    static init(consumerGroupOpts, defaultTopic, defaultTopicOpts) {
+    static init(defaultTopic, defaultTopicOpts, consumerGroupOpts) {
         return __awaiter(this, void 0, void 0, function* () {
             consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, consumerGroupOpts) : defaultOpts_1.defaultKafkaConsumerGroupOpts;
             const _self = this;
@@ -31,11 +31,12 @@ class ServiceConsumerGroup {
                 yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts)
                     .then(() => {
                     _self.Logger.log('Init ConsumerGroup...');
+                    const kHost = process.env.KAFKA_HOST || 'localhost:9092';
                     _self._client = new kafka_node_1.KafkaClient({
-                        kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
+                        kafkaHost: kHost,
                         clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
                     });
-                    const options = Object.assign({}, consumerGroupOpts, { kafkaHost: process.env.KAFKA_HOST });
+                    const options = Object.assign({}, consumerGroupOpts, { kafkaHost: kHost });
                     _self.client = new kafka_node_1.ConsumerGroup(options, [defaultTopic]);
                     _self.client.client = _self._client;
                     _self._client.on('ready', () => {
@@ -52,7 +53,7 @@ class ServiceConsumerGroup {
     static subscribe(topic) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
-                yield this.init();
+                throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first");
             }
             const _self = this;
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
@@ -74,7 +75,7 @@ class ServiceConsumerGroup {
     static addTopic(topic) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
-                yield this.init();
+                throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first");
             }
             const _self = this;
             const cb = (err, data) => {
@@ -94,7 +95,7 @@ class ServiceConsumerGroup {
     static listen(cb1) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
-                yield this.init();
+                throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first");
             }
             const _self = this;
             this.client.on('message', (message) => {
