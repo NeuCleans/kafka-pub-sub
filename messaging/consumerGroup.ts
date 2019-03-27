@@ -50,7 +50,7 @@ export class ServiceConsumerGroup {
                     //subscribe to service topic
                     _self.client.client = _self._client;
 
-                    _self._client.on('ready', () => {
+                    _self._client.once('ready', () => {
                         _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
                         resolve();
                     });

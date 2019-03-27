@@ -25,6 +25,7 @@ class ServiceConsumer {
             const _self = this;
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 producer_1.ServiceProducer.Logger = _self.Logger;
+                producer_1.ServiceProducer.clientIdPrefix = _self.clientIdPrefix;
                 yield producer_1.ServiceProducer.init(defaultTopic)
                     .then(() => {
                     _self.Logger.log('Init Consumer...');

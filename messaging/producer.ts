@@ -2,7 +2,7 @@
 // https://www.npmjs.com/package/kafka-node
 // https://github.com/SOHU-Co/kafka-node
 // https://github.com/theotow/nodejs-kafka-example
-import { KafkaClient, Producer } from "kafka-node";
+import { KafkaClient, Producer, ProduceRequest } from "kafka-node";
 import { v4 } from "uuid";
 
 export class ServiceProducer {
@@ -52,7 +52,7 @@ export class ServiceProducer {
             });
 
             _self.client.on('error', (err) => {
-                _self.Logger.error(`Producer - ERROR: ${err.stack}`);
+                _self.Logger.error(`Producer:onError - ERROR: ${err.stack}`);
             });
         });
     }
@@ -69,10 +69,10 @@ export class ServiceProducer {
         return Buffer.from(JSON.stringify(jsonData));
     }
 
-    static async buildAMessageObject(data: any, toTopic: string, action?: string, fromTopic?: string) {
+    static async buildAMessageObject(data: any, toTopic: string, fromTopic?: string, action?: string): Promise<ProduceRequest> {
         if (!this.client) { await this.init(); };
         const _self = this;
-        return new Promise((resolve) => {
+        return new Promise<ProduceRequest>((resolve) => {
             const record = {
                 topic: toTopic, //To
                 messages: _self.prepareMsgBuffer(data, action),
@@ -81,6 +81,7 @@ export class ServiceProducer {
             }
             if (fromTopic) record['key'] = fromTopic; //From
             // return record;
+            // console.log(JSON.stringify(record, null, 2));
             resolve(record);
         })
     }
@@ -99,6 +100,7 @@ export class ServiceProducer {
                     resolve();
                 }
             };
+
             // if (!this.isConnected) return;
             // console.log("isConnected:", this.isConnected);
             _self.client.createTopics([topic], cb);
@@ -119,7 +121,7 @@ export class ServiceProducer {
      * @throws Error if Producer Not Yet Connected To Kafka
      */
 
-    static async send(records) {
+    static async send(records: ProduceRequest[]) {
         if (!this.client) { await this.init(); }
         // if (!this.isConnected) throw new Error('Producer Not Connected To Kafka');
         const _self = this;

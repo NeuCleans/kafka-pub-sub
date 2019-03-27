@@ -39,7 +39,7 @@ class ServiceConsumerGroup {
                     const options = Object.assign({}, consumerGroupOpts, { kafkaHost: kHost });
                     _self.client = new kafka_node_1.ConsumerGroup(options, [defaultTopic]);
                     _self.client.client = _self._client;
-                    _self._client.on('ready', () => {
+                    _self._client.once('ready', () => {
                         _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
                         resolve();
                     });

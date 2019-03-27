@@ -27,6 +27,7 @@ export class ServiceConsumer {
         const _self = this;
         await new Promise(async (resolve, reject) => {
             ServiceProducer.Logger = _self.Logger;
+            ServiceProducer.clientIdPrefix = _self.clientIdPrefix;
 
             await ServiceProducer.init(defaultTopic)
                 .then(() => {

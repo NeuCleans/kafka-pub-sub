@@ -43,7 +43,7 @@ class ServiceProducer {
                     resolve();
                 }));
                 _self.client.on('error', (err) => {
-                    _self.Logger.error(`Producer - ERROR: ${err.stack}`);
+                    _self.Logger.error(`Producer:onError - ERROR: ${err.stack}`);
                 });
             });
         });
@@ -59,7 +59,7 @@ class ServiceProducer {
         this.Logger.log("jsonData: " + JSON.stringify(jsonData, null, 2));
         return Buffer.from(JSON.stringify(jsonData));
     }
-    static buildAMessageObject(data, toTopic, action, fromTopic) {
+    static buildAMessageObject(data, toTopic, fromTopic, action) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
                 yield this.init();

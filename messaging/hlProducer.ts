@@ -2,7 +2,7 @@
 // https://www.npmjs.com/package/kafka-node
 // https://github.com/SOHU-Co/kafka-node
 // https://github.com/theotow/nodejs-kafka-example
-import { KafkaClient, Producer } from "kafka-node";
+import { KafkaClient, Producer, ProduceRequest } from "kafka-node";
 import { v4 } from "uuid";
 import { defaultKafkaTopicConfig } from "./defaultOpts";
 import { KafkaTopicConfig } from "./interfaces";
@@ -74,10 +74,10 @@ export class ServiceHLProducer {
         return Buffer.from(JSON.stringify(jsonData));
     }
 
-    static async buildAMessageObject(data: any, toTopic: string, action?: string, fromTopic?: string) {
+    static async buildAMessageObject(data: any, toTopic: string, fromTopic?: string, action?: string): Promise<ProduceRequest> {
         if (!this.client) { await this.init(); };
         const _self = this;
-        return new Promise((resolve) => {
+        return new Promise<ProduceRequest>((resolve) => {
             const record = {
                 topic: toTopic, //To
                 messages: _self.prepareMsgBuffer(data, action),
@@ -133,7 +133,7 @@ export class ServiceHLProducer {
      * @throws Error if Producer Not Yet Connected To Kafka
      */
 
-    static async send(records) {
+    static async send(records: ProduceRequest[]) {
         if (!this.client) { await this.init(); }
         // if (!this.isConnected) throw new Error('Producer Not Connected To Kafka');
         const _self = this;
