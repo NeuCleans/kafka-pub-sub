@@ -23,7 +23,7 @@ class ServiceConsumer {
     static init(defaultTopic) {
         return __awaiter(this, void 0, void 0, function* () {
             const _self = this;
-            yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 producer_1.ServiceProducer.Logger = _self.Logger;
                 producer_1.ServiceProducer.clientIdPrefix = _self.clientIdPrefix;
                 yield producer_1.ServiceProducer.init(defaultTopic)
@@ -106,8 +106,10 @@ class ServiceConsumer {
                     }
                     if (data) {
                         _self.Logger.log(`Consumer:onMessage - Data: ${JSON.stringify(data)}`);
-                        message.value = message.value.toString();
-                        message.key = message.key.toString();
+                        if (message.hasOwnProperty('value') && message.value)
+                            message.value = message.value.toString();
+                        if (message.hasOwnProperty('key') && message.key)
+                            message.key = message.key.toString();
                         return ((cb1) ? cb1(message) : message);
                     }
                 });

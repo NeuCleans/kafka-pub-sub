@@ -123,8 +123,8 @@ export class ServiceConsumerGroup {
                 if (err) { _self.Logger.log(`ConsumerGroup:onMessage - Error: ${err.stack}`); }
                 if (data) {
                     _self.Logger.log(`ConsumerGroup:onMessage - Data: ${JSON.stringify(data)}`);
-                    message.value = message.value.toString();
-                    message.key = message.key.toString();
+                    if (message.hasOwnProperty('value') && message.value) message.value = message.value.toString();
+                    if (message.hasOwnProperty('key') && message.key) message.key = message.key.toString();
                     return ((cb1) ? cb1(message) : message);
                 }
             });

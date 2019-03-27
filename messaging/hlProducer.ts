@@ -84,6 +84,7 @@ export class ServiceHLProducer {
                 // key: fromTopic //From
             }
             if (fromTopic) record['key'] = fromTopic; //From
+            // console.log(JSON.stringify(record, null, 2));
             // return record;
             resolve(record);
         })

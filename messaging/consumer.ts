@@ -25,7 +25,7 @@ export class ServiceConsumer {
 
     static async init(defaultTopic?: string) {
         const _self = this;
-        await new Promise(async (resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             ServiceProducer.Logger = _self.Logger;
             ServiceProducer.clientIdPrefix = _self.clientIdPrefix;
 
@@ -120,8 +120,8 @@ export class ServiceConsumer {
                 if (err) { _self.Logger.log(`Consumer:onMessage - Error: ${err.stack}`); }
                 if (data) {
                     _self.Logger.log(`Consumer:onMessage - Data: ${JSON.stringify(data)}`);
-                    message.value = message.value.toString();
-                    message.key = message.key.toString();
+                    if (message.hasOwnProperty('value') && message.value) message.value = message.value.toString();
+                    if (message.hasOwnProperty('key') && message.key) message.key = message.key.toString();
                     return ((cb1) ? cb1(message) : message);
                 }
             });
