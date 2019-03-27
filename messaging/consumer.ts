@@ -23,7 +23,7 @@ export class ServiceConsumer {
         return this.client;
     }
 
-    static async init(defaultTopic?: string) {
+    static async init(defaultTopic?: string, kHost?: string) {
         if (this.client) return;
         const _self = this;
 
@@ -36,7 +36,7 @@ export class ServiceConsumer {
                     _self.Logger.log('Init Consumer...');
 
                     _self._client = new KafkaClient({
-                        kafkaHost: process.env.KAFKA_HOST,
+                        kafkaHost: kHost || process.env.KAFKA_HOST,
                         clientId: `${_self.clientIdPrefix}_${v4()}`
                     });
                     _self.client = new Consumer(

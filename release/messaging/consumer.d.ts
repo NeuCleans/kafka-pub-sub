@@ -8,7 +8,7 @@ export declare class ServiceConsumer {
     private static client;
     private static _client;
     static getClient(): Promise<Consumer>;
-    static init(defaultTopic?: string): Promise<void>;
+    static init(defaultTopic?: string, kHost?: string): Promise<void>;
     static subscribe(topic: string): Promise<void>;
     private static addTopic;
     static listen(cb1?: (message: any) => any): Promise<void>;

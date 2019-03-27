@@ -20,7 +20,7 @@ class ServiceConsumer {
             return this.client;
         });
     }
-    static init(defaultTopic) {
+    static init(defaultTopic, kHost) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.client)
                 return;
@@ -32,7 +32,7 @@ class ServiceConsumer {
                     .then(() => {
                     _self.Logger.log('Init Consumer...');
                     _self._client = new kafka_node_1.KafkaClient({
-                        kafkaHost: process.env.KAFKA_HOST,
+                        kafkaHost: kHost || process.env.KAFKA_HOST,
                         clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
                     });
                     _self.client = new kafka_node_1.Consumer(_self._client, [], {
