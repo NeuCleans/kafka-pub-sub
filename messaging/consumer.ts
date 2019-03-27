@@ -48,7 +48,7 @@ export class ServiceConsumer {
                         }
                     );
 
-                    _self._client.once('ready', async () => {
+                    _self._client.on('ready', async () => {
                         _self.Logger.log(`Consumer:onReady - Ready...`);
                         if (defaultTopic) await _self.subscribe(defaultTopic);
                         resolve();
@@ -76,7 +76,7 @@ export class ServiceConsumer {
                         });
                 }
             }
-            this._client.topicExists([topic], cb);
+            _self._client.topicExists([topic], cb);
         })
     }
 

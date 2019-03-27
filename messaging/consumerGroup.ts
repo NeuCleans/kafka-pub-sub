@@ -29,7 +29,7 @@ export class ServiceConsumerGroup {
         if (this.client) return;
         const _self = this;
 
-        await new Promise(async (resolve, reject) => {
+        await new Promise<void>(async (resolve, reject) => {
             ServiceHLProducer.Logger = _self.Logger;
             ServiceHLProducer.clientIdPrefix = _self.clientIdPrefix;
 
@@ -44,13 +44,14 @@ export class ServiceConsumerGroup {
 
                     // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
                     consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, consumerGroupOpts) : (defaultKafkaConsumerGroupOpts as any);
-                    _self.client = new ConsumerGroup(consumerGroupOpts, [defaultTopic]) //topics can't be empty
+                    _self.client = new ConsumerGroup(consumerGroupOpts, [defaultTopic]); //topics can't be empty
                     //subscribe to service topic
                     _self.client.client = _self._client;
 
-                    _self._client.once('ready', () => {
+                    _self._client.on('ready', async () => {
                         _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
-                        resolve();
+                        // await _self.subscribe(defaultTopic);
+                        resolve(await _self.subscribe(defaultTopic));
                     });
 
                     _self.client.on('error', (err) => {
@@ -65,17 +66,19 @@ export class ServiceConsumerGroup {
         const _self = this;
 
         await new Promise(async (resolve, reject) => {
-            const cb = (err) => {
-                if (!err) {
-                    resolve(_self.addTopic(topic));
+            const cb = async (err) => {
+                if (err) {
+                    resolve(await _self.addTopic(topic))
+                    // await _self.addTopic(topic).then(() => resolve())
                 } else {
-                    ServiceHLProducer.createTopic(topic)
-                        .then(() => {
-                            resolve(_self.addTopic(topic));
+                    await ServiceHLProducer.createTopic(topic)
+                        .then(async () => {
+                            // await _self.addTopic(topic).then(() => resolve())
+                            resolve(await _self.addTopic(topic))
                         });
                 }
             }
-            this._client.topicExists([topic], cb);
+            _self._client.topicExists([topic], cb);
         })
     }
 
@@ -83,19 +86,25 @@ export class ServiceConsumerGroup {
         if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
         const _self = this;
 
-        const cb = (err, data) => {
-            if (err) {
-                _self.Logger.error(`ConsumerGroup:addTopic - ${err.stack}`);
-            }
-            if (data) _self.Logger.log(`ConsumerGroup:addTopic - Topic: ${JSON.stringify(data)} added`);
-        };
+        return new Promise((resolve, reject) => {
+            const cb = (err, data) => {
+                if (err) {
+                    _self.Logger.error(`ConsumerGroup:addTopic - ${err.stack}`);
+                    reject(err);
+                }
+                if (data) {
+                    _self.Logger.log(`ConsumerGroup:addTopic - Topic: ${JSON.stringify(data)} added`);
+                    resolve();
+                }
+            };
 
-        // https://github.com/SOHU-Co/kafka-node/issues/781#issuecomment-336154404
-        this._client.refreshMetadata([topic], (err) => {
-            if (!err) {
-                _self.client.addTopics([topic], cb); // only works w/ string[] not Topic[] and must refreshMetadata
-            }
-        });
+            // https://github.com/SOHU-Co/kafka-node/issues/781#issuecomment-336154404
+            _self._client.refreshMetadata([topic], (err) => {
+                if (!err) {
+                    _self.client.addTopics([topic], cb); // only works w/ string[] not Topic[] and must refreshMetadata
+                }
+            });
+        })
     }
 
     // static async commit() {

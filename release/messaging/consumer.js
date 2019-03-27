@@ -39,7 +39,7 @@ class ServiceConsumer {
                         autoCommit: false,
                         fromOffset: true
                     });
-                    _self._client.once('ready', () => __awaiter(this, void 0, void 0, function* () {
+                    _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
                         _self.Logger.log(`Consumer:onReady - Ready...`);
                         if (defaultTopic)
                             yield _self.subscribe(defaultTopic);
@@ -70,7 +70,7 @@ class ServiceConsumer {
                         });
                     }
                 };
-                this._client.topicExists([topic], cb);
+                _self._client.topicExists([topic], cb);
             }));
         });
     }

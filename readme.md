@@ -20,26 +20,29 @@ Pub Sub wrapper around [kafka-node](https://github.com/SOHU-Co/kafka-node)
 ### Producer/Consumer
 
 ```
-async function sampleKafkaPubSub() {
-    const topic = 'SOME_TOPIC_ID'
+const kafkaPS = require('kafka-pub-sub');
 
-    ServiceConsumer.Logger = new Logger();
-    ServiceConsumer.clientIdPrefix = "ACCT";
+function sampleKafkaPubSub() {
+    const topic = 'SOME_TOPIC';
+    
+    //optional
+    kafkaPS.ServiceConsumer.Logger = new Logger();
+    kafkaPS.ServiceConsumer.clientIdPrefix = "ACC";
 
-    await ServiceConsumer.init(topic);
-    ServiceConsumer.listen((message) => {
-        console.log(`Message: ${JSON.stringify(message, null, 2)}`);
-    });
-
-    setInterval(async () => {
-        console.log('sending....');
-        const msg = await ServiceProducer.buildAMessageObject({ date: `${new Date().toISOString()}` }, topic);
-        try {
-            await ServiceProducer.send([msg]);
-        } catch (error) {
-            console.error(error.stack);
-        }
-    }, 5 * 1000);
+    kafkaPS.ServiceConsumer.init(topic)
+        .then(() => {
+            kafkaPS.ServiceConsumer.listen((message) => {
+                console.log(`Message: ${JSON.stringify(message, null, 2)}`);
+            });
+            setInterval(() => {
+                console.log('sending....');
+                kafkaPS.ServiceProducer.init(topic).then(() => {
+                    kafkaPS.ServiceProducer.buildAMessageObject({ date: `${new Date().toISOString()}` }, topic)
+                        .then((msg) => kafkaPS.ServiceProducer.send([msg]))
+                        .catch(error => console.error(error.stack));
+                })
+            }, 5 * 1000);
+        });
 }
 ```
 

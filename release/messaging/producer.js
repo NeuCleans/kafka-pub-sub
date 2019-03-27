@@ -37,7 +37,7 @@ class ServiceProducer {
                     requireAcks: 1,
                     ackTimeoutMs: 100
                 });
-                _self._client.once('ready', () => __awaiter(this, void 0, void 0, function* () {
+                _self.client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
                     _self.Logger.log('Producer:onReady - Ready....');
                     _self.isConnected = true;
                     if (defaultTopic)

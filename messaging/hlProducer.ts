@@ -28,7 +28,6 @@ export class ServiceHLProducer {
     static async init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig, kHost?: string) {
         if (this.client) return;
         const _self = this;
-
         await new Promise((resolve, reject) => {
             if (_self.isConnected) { resolve(); }
 
@@ -48,8 +47,8 @@ export class ServiceHLProducer {
                     // https://github.com/SOHU-Co/kafka-node/issues/275#issuecomment-233666209
                 });
 
-            _self._client.once('ready', async () => {
-                _self.Logger.log('HLProducer:onReady - Ready....');
+            _self.client.on('ready', async () => {
+                _self.Logger.log('HLProducer:onReady - Ready!....');
                 _self.isConnected = true;
                 if (defaultTopic) await _self.createTopic(defaultTopic, defaultTopicOpts); //create default mailbox
                 resolve();
@@ -117,8 +116,15 @@ export class ServiceHLProducer {
 
             // if (!_self.isConnected) return;
             // console.log("isConnected:", _self.isConnected);
-            _self._client.createTopics([topicToCreate], cb);
             // _self.client.createTopics([topic], cb);
+
+            _self._client.topicExists([topic], (err) => {
+                if (!err) _self._client.createTopics([topicToCreate], cb);
+                if (err) {
+                    _self.Logger.error("HLProducer: Topic (" + topic + ") exits...");
+                    resolve();
+                }
+            });
         })
     }
 
@@ -144,7 +150,7 @@ export class ServiceHLProducer {
         await new Promise(async (resolve, reject) => {
             const cb = (error, data) => {
                 if (error) {
-                    _self.Logger.error("HLProducer:send - " + error.stack)
+                    _self.Logger.error("HLProducer:send - " + error.stack);
                     reject(error);
                 };
                 if (data) {

@@ -45,7 +45,7 @@ export class ServiceProducer {
                 }
             );
 
-            _self._client.once('ready', async () => {
+            _self.client.on('ready', async () => {
                 _self.Logger.log('Producer:onReady - Ready....');
                 _self.isConnected = true;
                 if (defaultTopic) await _self.createTopic(defaultTopic);
@@ -81,8 +81,8 @@ export class ServiceProducer {
                 // key: fromTopic //From
             }
             if (fromTopic) record['key'] = fromTopic; //From
-            // return record;
             // console.log(JSON.stringify(record, null, 2));
+            // return record;
             resolve(record);
         })
     }
@@ -102,8 +102,8 @@ export class ServiceProducer {
                 }
             };
 
-            // if (!this.isConnected) return;
-            // console.log("isConnected:", this.isConnected);
+            // if (!_self.isConnected) return;
+            // console.log("isConnected:", _self.isConnected);
             _self.client.createTopics([topic], cb);
         })
     }

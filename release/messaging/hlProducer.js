@@ -39,8 +39,8 @@ class ServiceHLProducer {
                     ackTimeoutMs: 100,
                     partitionerType: 2
                 });
-                _self._client.once('ready', () => __awaiter(this, void 0, void 0, function* () {
-                    _self.Logger.log('HLProducer:onReady - Ready....');
+                _self.client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
+                    _self.Logger.log('HLProducer:onReady - Ready!....');
                     _self.isConnected = true;
                     if (defaultTopic)
                         yield _self.createTopic(defaultTopic, defaultTopicOpts);
@@ -101,7 +101,14 @@ class ServiceHLProducer {
                         resolve();
                     }
                 };
-                _self._client.createTopics([topicToCreate], cb);
+                _self._client.topicExists([topic], (err) => {
+                    if (!err)
+                        _self._client.createTopics([topicToCreate], cb);
+                    if (err) {
+                        _self.Logger.error("HLProducer: Topic (" + topic + ") exits...");
+                        resolve();
+                    }
+                });
             }));
         });
     }
