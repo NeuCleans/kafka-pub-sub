@@ -32,7 +32,7 @@ export class ServiceProducer {
             _self.Logger.log('Init Producer...');
 
             _self._client = new KafkaClient({
-                kafkaHost: process.env.KAFKA_HOST,
+                kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
                 clientId: `${_self.clientIdPrefix}_${v4()}`
             });
 

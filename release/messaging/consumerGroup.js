@@ -32,7 +32,7 @@ class ServiceConsumerGroup {
                     .then(() => {
                     _self.Logger.log('Init ConsumerGroup...');
                     _self._client = new kafka_node_1.KafkaClient({
-                        kafkaHost: process.env.KAFKA_HOST,
+                        kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
                         clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
                     });
                     const options = Object.assign({}, consumerGroupOpts, { kafkaHost: process.env.KAFKA_HOST });

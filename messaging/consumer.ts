@@ -33,7 +33,7 @@ export class ServiceConsumer {
                     _self.Logger.log('Init Consumer...');
 
                     _self._client = new KafkaClient({
-                        kafkaHost: process.env.KAFKA_HOST,
+                        kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
                         clientId: `${_self.clientIdPrefix}_${v4()}`
                     });
                     _self.client = new Consumer(

@@ -34,7 +34,7 @@ export class ServiceHLProducer {
             _self.Logger.log('Init HLProducer...');
 
             _self._client = new KafkaClient({
-                kafkaHost: process.env.KAFKA_HOST,
+                kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
                 clientId: `${_self.clientIdPrefix}_${v4()}`
             });
 
