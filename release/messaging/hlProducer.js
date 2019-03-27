@@ -20,7 +20,7 @@ class ServiceHLProducer {
             return this.client;
         });
     }
-    static init() {
+    static init(defaultTopic, defaultTopicOpts) {
         return __awaiter(this, void 0, void 0, function* () {
             const _self = this;
             yield new Promise((resolve, reject) => {
@@ -30,7 +30,7 @@ class ServiceHLProducer {
                 _self.Logger.log('Init HLProducer...');
                 _self._client = new kafka_node_1.KafkaClient({
                     kafkaHost: process.env.KAFKA_HOST,
-                    clientId: _self.SERVICE_ID
+                    clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
                 });
                 _self.client = new kafka_node_1.Producer(_self._client, {
                     requireAcks: 1,
@@ -40,7 +40,8 @@ class ServiceHLProducer {
                 _self._client.once('ready', () => __awaiter(this, void 0, void 0, function* () {
                     _self.Logger.log('HLProducer:onReady - Ready....');
                     _self.isConnected = true;
-                    yield _self.createTopic(_self.SERVICE_ID);
+                    if (defaultTopic)
+                        yield _self.createTopic(defaultTopic, defaultTopicOpts);
                     resolve();
                 }));
                 _self.client.on('error', (err) => {
@@ -61,7 +62,7 @@ class ServiceHLProducer {
         this.Logger.log("jsonData", JSON.stringify(jsonData, null, 2));
         return Buffer.from(JSON.stringify(jsonData));
     }
-    static buildAMessageObject(data, action, topic = this.SERVICE_ID) {
+    static buildAMessageObject(data, toTopic, action, fromTopic) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
                 yield this.init();
@@ -70,20 +71,22 @@ class ServiceHLProducer {
             const _self = this;
             return new Promise((resolve) => {
                 const record = {
-                    topic: topic,
+                    topic: toTopic,
                     messages: _self.prepareMsgBuffer(data, action),
-                    key: _self.SERVICE_ID
+                    key: fromTopic
                 };
                 resolve(record);
             });
         });
     }
-    static createTopic(topic, kafkaTopicConfig = defaultOpts_1.defaultKafkaTopicConfig) {
+    static createTopic(topic, kafkaTopicConfig) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
                 yield this.init();
             }
             const _self = this;
+            kafkaTopicConfig = (kafkaTopicConfig) ?
+                Object.assign({}, defaultOpts_1.defaultKafkaTopicConfig, kafkaTopicConfig) : defaultOpts_1.defaultKafkaTopicConfig;
             const topicToCreate = Object.assign({ topic }, kafkaTopicConfig);
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 const cb = (error, data) => {
@@ -145,7 +148,7 @@ ServiceHLProducer.Logger = {
     log: (data) => { console.log(data); },
     error: (error) => { console.error(error); }
 };
-ServiceHLProducer.SERVICE_ID = uuid_1.v4();
+ServiceHLProducer.clientIdPrefix = "SAMPLE";
 ServiceHLProducer.isConnected = false;
 exports.ServiceHLProducer = ServiceHLProducer;
 ;

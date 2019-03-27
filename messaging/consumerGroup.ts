@@ -6,14 +6,16 @@ import { KafkaClient, ConsumerGroup, ConsumerGroupOptions } from 'kafka-node';
 import { v4 } from "uuid";
 import { ServiceHLProducer } from './hlProducer';
 import { defaultKafkaConsumerGroupOpts } from './defaultOpts';
+import { KafkaTopicConfig } from './interfaces';
 
 export class ServiceConsumerGroup {
-    //set theses
+    //  ----- can set theses -----
     static Logger: { log: Function, error: Function } = {
         log: (data) => { console.log(data) },
         error: (error) => { console.error(error) }
     };
-    static SERVICE_ID: string = v4();
+    static clientIdPrefix: string = "SAMPLE";
+    //  ----- can set theses -----
 
     private static client: ConsumerGroup;
     private static _client: KafkaClient;
@@ -23,25 +25,26 @@ export class ServiceConsumerGroup {
         return this.client;
     }
 
-    static async init(opts?: any) {
+    static async init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig, consumerGroupOpts?: ConsumerGroupOptions) {
         // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
-        opts = (opts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, opts) : Object.assign({}, defaultKafkaConsumerGroupOpts, { groupId: this.SERVICE_ID });
+        consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, consumerGroupOpts) : (defaultKafkaConsumerGroupOpts as any);
         const _self = this;
 
         await new Promise(async (resolve, reject) => {
             ServiceHLProducer.Logger = _self.Logger;
-            ServiceHLProducer.SERVICE_ID = _self.SERVICE_ID;
+            ServiceHLProducer.clientIdPrefix = _self.clientIdPrefix;
 
-            await ServiceHLProducer.init()
+            await ServiceHLProducer.init(defaultTopic, defaultTopicOpts)
                 .then(() => {
                     _self.Logger.log('Init ConsumerGroup...');
 
                     _self._client = new KafkaClient({
                         kafkaHost: process.env.KAFKA_HOST,
-                        clientId: _self.SERVICE_ID
+                        clientId: `${_self.clientIdPrefix}_${v4()}`
                     });
-                    const options = Object.assign({}, opts, { kafkaHost: process.env.KAFKA_HOST });
-                    _self.client = new ConsumerGroup(options, [_self.SERVICE_ID]) //topics can't be empty
+
+                    const options = Object.assign({}, consumerGroupOpts, { kafkaHost: process.env.KAFKA_HOST });
+                    _self.client = new ConsumerGroup(options, [defaultTopic]) //topics can't be empty
                     //subscribe to service topic
                     _self.client.client = _self._client;
 
@@ -57,7 +60,7 @@ export class ServiceConsumerGroup {
         });
     }
 
-    static async subscribe(topic: string = this.SERVICE_ID) {
+    static async subscribe(topic: string) {
         if (!this.client) { await this.init(); }
         const _self = this;
 
@@ -97,11 +100,12 @@ export class ServiceConsumerGroup {
 
     // static async commit() {
     //     if (!this.client) { await this.init(); }
+    //     const _self = this;
     //     const cb = (err, data) => {
-    //         Logger.log('ConsumerGroup:commit - Committing...');
-    //         if (err) { Logger.log(`ConsumerGroup:commit - Error: ${err.stack}`); }
+    //         this.Logger.log('ConsumerGroup:commit - Committing...');
+    //         if (err) { this.Logger.log(`ConsumerGroup:commit - Error: ${err.stack}`); }
     //         if (data) {
-    //             Logger.log(`ConsumerGroup:commit - Data: ${JSON.stringify(data)}`);
+    //             this.Logger.log(`ConsumerGroup:commit - Data: ${JSON.stringify(data)}`);
     //             // return (cb1) ? cb1(message) : message;
     //         }
     //     };

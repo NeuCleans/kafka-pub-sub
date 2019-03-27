@@ -7,12 +7,13 @@ import { ServiceProducer } from './producer';
 import { v4 } from "uuid";
 
 export class ServiceConsumer {
-    //set theses
+    //  ----- can set theses -----
     static Logger: { log: Function, error: Function } = {
         log: (data) => { console.log(data) },
         error: (error) => { console.error(error) }
     };
-    static SERVICE_ID: string = v4();
+    static clientIdPrefix: string = "SAMPLE";
+    //  ----- can set theses -----
 
     private static client: Consumer;
     private static _client: KafkaClient;
@@ -22,19 +23,18 @@ export class ServiceConsumer {
         return this.client;
     }
 
-    static async init() {
+    static async init(defaultTopic?: string) {
         const _self = this;
         await new Promise(async (resolve, reject) => {
             ServiceProducer.Logger = _self.Logger;
-            ServiceProducer.SERVICE_ID = _self.SERVICE_ID;
 
-            await ServiceProducer.init()
+            await ServiceProducer.init(defaultTopic)
                 .then(() => {
                     _self.Logger.log('Init Consumer...');
 
                     _self._client = new KafkaClient({
                         kafkaHost: process.env.KAFKA_HOST,
-                        clientId: _self.SERVICE_ID
+                        clientId: `${_self.clientIdPrefix}_${v4()}`
                     });
                     _self.client = new Consumer(
                         _self._client,
@@ -45,9 +45,9 @@ export class ServiceConsumer {
                         }
                     );
 
-                    _self._client.once('ready', () => {
+                    _self._client.once('ready', async () => {
                         _self.Logger.log(`Consumer:onReady - Ready...`);
-                        // _self.subscribe();
+                        if (defaultTopic) await _self.subscribe(defaultTopic);
                         resolve();
                     });
 
@@ -58,7 +58,7 @@ export class ServiceConsumer {
         });
     }
 
-    static async subscribe(topic: string = this.SERVICE_ID) {
+    static async subscribe(topic: string) {
         if (!this.client) { await this.init(); }
         const _self = this;
 
@@ -98,11 +98,12 @@ export class ServiceConsumer {
 
     // static async commit() {
     //     if (!this.client) { await this.init(); }
+    //     const _self = this;
     //     const cb = (err, data) => {
-    //         Logger.log('Consumer:commit - Committing...');
-    //         if (err) { Logger.log(`Consumer:commit - Error: ${err.stack}`); }
+    //         this.Logger.log('Consumer:commit - Committing...');
+    //         if (err) { this.Logger.log(`Consumer:commit - Error: ${err.stack}`); }
     //         if (data) {
-    //             Logger.log(`Consumer:commit - Data: ${JSON.stringify(data)}`);
+    //             this.Logger.log(`Consumer:commit - Data: ${JSON.stringify(data)}`);
     //             // return (cb1) ? cb1(message) : message;
     //         }
     //     };

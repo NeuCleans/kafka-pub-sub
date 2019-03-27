@@ -18,7 +18,7 @@ const defaultKafkaConsumerGroupOpts = {
     // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
     batch: undefined, // put client batch settings if you need them
     ssl: true, // optional (defaults to false) or tls options hash
-    groupId: 'SOME_GROUP_ID',
+    groupId: 'SAMPLE_GROUP_ID',
     sessionTimeout: 15000,
     protocol: ['roundrobin'],
     encoding: 'buffer', // default is utf8, use 'buffer' for binary data

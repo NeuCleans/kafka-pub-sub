@@ -6,12 +6,13 @@ import { KafkaClient, Producer } from "kafka-node";
 import { v4 } from "uuid";
 
 export class ServiceProducer {
-    //set these
+    //  ----- can set theses -----
     static Logger: { log: Function, error: Function } = {
         log: (data) => { console.log(data) },
         error: (error) => { console.error(error) }
     };
-    static SERVICE_ID: string = v4();
+    static clientIdPrefix: string = "SAMPLE";
+    //  ----- can set theses -----
 
     private static client: Producer;
     private static _client: KafkaClient;
@@ -22,7 +23,7 @@ export class ServiceProducer {
         return this.client;
     }
 
-    static async init() {
+    static async init(defaultTopic?: string) {
         const _self = this;
 
         await new Promise((resolve, reject) => {
@@ -32,7 +33,7 @@ export class ServiceProducer {
 
             _self._client = new KafkaClient({
                 kafkaHost: process.env.KAFKA_HOST,
-                clientId: _self.SERVICE_ID
+                clientId: `${_self.clientIdPrefix}_${v4()}`
             });
 
             _self.client = new Producer(
@@ -43,9 +44,10 @@ export class ServiceProducer {
                 }
             );
 
-            _self._client.once('ready', () => {
+            _self._client.once('ready', async () => {
                 _self.Logger.log('Producer:onReady - Ready....');
                 _self.isConnected = true;
+                if (defaultTopic) await _self.createTopic(defaultTopic);
                 resolve();
             });
 
@@ -55,7 +57,7 @@ export class ServiceProducer {
         });
     }
 
-    static prepareMsgBuffer(data: { id?: string }, action?: string) {
+    static prepareMsgBuffer(data: any, action?: string) {
         let jsonData = {
             $ref: v4(),
             timestamp: Date.now(),
@@ -68,15 +70,15 @@ export class ServiceProducer {
         return Buffer.from(JSON.stringify(jsonData));
     }
 
-    static async buildAMessageObject(data: any, action?: string, topic: string = this.SERVICE_ID) {
+    static async buildAMessageObject(data: any, toTopic: string, action?: string, fromTopic?: string) {
         if (!this.client) { await this.init(); };
         const _self = this;
         return new Promise((resolve) => {
             const record = {
-                topic: topic, //To
+                topic: toTopic, //To
                 messages: _self.prepareMsgBuffer(data, action),
                 partition: 0,
-                key: _self.SERVICE_ID //From
+                key: fromTopic //From
             }
             // return record;
             resolve(record);

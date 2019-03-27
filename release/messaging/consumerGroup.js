@@ -21,22 +21,22 @@ class ServiceConsumerGroup {
             return this.client;
         });
     }
-    static init(opts) {
+    static init(defaultTopic, defaultTopicOpts, consumerGroupOpts) {
         return __awaiter(this, void 0, void 0, function* () {
-            opts = opts || Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, { groupId: this.SERVICE_ID });
+            consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, consumerGroupOpts) : defaultOpts_1.defaultKafkaConsumerGroupOpts;
             const _self = this;
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 hlProducer_1.ServiceHLProducer.Logger = _self.Logger;
-                hlProducer_1.ServiceHLProducer.SERVICE_ID = _self.SERVICE_ID;
-                yield hlProducer_1.ServiceHLProducer.init()
+                hlProducer_1.ServiceHLProducer.clientIdPrefix = _self.clientIdPrefix;
+                yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts)
                     .then(() => {
                     _self.Logger.log('Init ConsumerGroup...');
                     _self._client = new kafka_node_1.KafkaClient({
                         kafkaHost: process.env.KAFKA_HOST,
-                        clientId: _self.SERVICE_ID
+                        clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
                     });
-                    const options = Object.assign({}, opts, { kafkaHost: process.env.KAFKA_HOST });
-                    _self.client = new kafka_node_1.ConsumerGroup(options, [_self.SERVICE_ID]);
+                    const options = Object.assign({}, consumerGroupOpts, { kafkaHost: process.env.KAFKA_HOST });
+                    _self.client = new kafka_node_1.ConsumerGroup(options, [defaultTopic]);
                     _self.client.client = _self._client;
                     _self._client.on('ready', () => {
                         _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
@@ -49,7 +49,7 @@ class ServiceConsumerGroup {
             }));
         });
     }
-    static subscribe(topic = this.SERVICE_ID) {
+    static subscribe(topic) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
                 yield this.init();
@@ -118,6 +118,6 @@ ServiceConsumerGroup.Logger = {
     log: (data) => { console.log(data); },
     error: (error) => { console.error(error); }
 };
-ServiceConsumerGroup.SERVICE_ID = uuid_1.v4();
+ServiceConsumerGroup.clientIdPrefix = "SAMPLE";
 exports.ServiceConsumerGroup = ServiceConsumerGroup;
 //# sourceMappingURL=consumerGroup.js.map

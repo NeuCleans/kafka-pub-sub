@@ -8,12 +8,13 @@ import { defaultKafkaTopicConfig } from "./defaultOpts";
 import { KafkaTopicConfig } from "./interfaces";
 
 export class ServiceHLProducer {
-    //set theses
+    //  ----- can set theses -----
     static Logger: { log: Function, error: Function } = {
         log: (data) => { console.log(data) },
         error: (error) => { console.error(error) }
     };
-    static SERVICE_ID: string = v4();
+    static clientIdPrefix: string = "SAMPLE";
+    //  ----- can set theses -----
 
     private static client: Producer;
     private static _client: KafkaClient;
@@ -24,7 +25,7 @@ export class ServiceHLProducer {
         return this.client;
     }
 
-    static async init() {
+    static async init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig) {
         const _self = this;
 
         await new Promise((resolve, reject) => {
@@ -34,7 +35,7 @@ export class ServiceHLProducer {
 
             _self._client = new KafkaClient({
                 kafkaHost: process.env.KAFKA_HOST,
-                clientId: _self.SERVICE_ID
+                clientId: `${_self.clientIdPrefix}_${v4()}`
             });
 
             _self.client = new Producer(
@@ -49,7 +50,7 @@ export class ServiceHLProducer {
             _self._client.once('ready', async () => {
                 _self.Logger.log('HLProducer:onReady - Ready....');
                 _self.isConnected = true;
-                await _self.createTopic(_self.SERVICE_ID); //create default mailbox for service
+                if (defaultTopic) await _self.createTopic(defaultTopic, defaultTopicOpts); //create default mailbox
                 resolve();
             });
 
@@ -59,7 +60,7 @@ export class ServiceHLProducer {
         });
     }
 
-    static prepareMsgBuffer(data: { id?: string }, action?: string) {
+    static prepareMsgBuffer(data: any, action?: string) {
         let jsonData = {
             $ref: v4(),
             timestamp: Date.now(),
@@ -72,14 +73,14 @@ export class ServiceHLProducer {
         return Buffer.from(JSON.stringify(jsonData));
     }
 
-    static async buildAMessageObject(data: any, action?: string, topic: string = this.SERVICE_ID) {
+    static async buildAMessageObject(data: any, toTopic: string, action?: string, fromTopic?: string) {
         if (!this.client) { await this.init(); };
         const _self = this;
         return new Promise((resolve) => {
             const record = {
-                topic: topic, //To
+                topic: toTopic, //To
                 messages: _self.prepareMsgBuffer(data, action),
-                key: _self.SERVICE_ID //From
+                key: fromTopic //From
             }
             // return record;
             resolve(record);
@@ -90,12 +91,13 @@ export class ServiceHLProducer {
         if (!this.client) { await this.init(); }
         const _self = this;
 
-        kafkaTopicConfig = (kafkaTopicConfig) ? Object.assign({}, defaultKafkaTopicConfig, kafkaTopicConfig) : defaultKafkaTopicConfig
-
+        kafkaTopicConfig = (kafkaTopicConfig) ?
+            Object.assign({}, defaultKafkaTopicConfig, kafkaTopicConfig) : defaultKafkaTopicConfig
         const topicToCreate = {
             topic,
             ...kafkaTopicConfig
         }
+
         await new Promise(async (resolve, reject) => {
             const cb = (error, data) => {
                 if (error) {

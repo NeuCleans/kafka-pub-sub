@@ -20,27 +20,28 @@ class ServiceConsumer {
             return this.client;
         });
     }
-    static init() {
+    static init(defaultTopic) {
         return __awaiter(this, void 0, void 0, function* () {
             const _self = this;
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 producer_1.ServiceProducer.Logger = _self.Logger;
-                producer_1.ServiceProducer.SERVICE_ID = _self.SERVICE_ID;
-                yield producer_1.ServiceProducer.init()
+                yield producer_1.ServiceProducer.init(defaultTopic)
                     .then(() => {
                     _self.Logger.log('Init Consumer...');
                     _self._client = new kafka_node_1.KafkaClient({
                         kafkaHost: process.env.KAFKA_HOST,
-                        clientId: _self.SERVICE_ID
+                        clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
                     });
                     _self.client = new kafka_node_1.Consumer(_self._client, [], {
                         autoCommit: false,
                         fromOffset: true
                     });
-                    _self._client.once('ready', () => {
+                    _self._client.once('ready', () => __awaiter(this, void 0, void 0, function* () {
                         _self.Logger.log(`Consumer:onReady - Ready...`);
+                        if (defaultTopic)
+                            yield _self.subscribe(defaultTopic);
                         resolve();
-                    });
+                    }));
                     _self.client.on('error', (err) => {
                         _self.Logger.error(`Consumer:onError - ERROR: ${err.stack}`);
                     });
@@ -48,7 +49,7 @@ class ServiceConsumer {
             }));
         });
     }
-    static subscribe(topic = this.SERVICE_ID) {
+    static subscribe(topic) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
                 yield this.init();
@@ -117,6 +118,6 @@ ServiceConsumer.Logger = {
     log: (data) => { console.log(data); },
     error: (error) => { console.error(error); }
 };
-ServiceConsumer.SERVICE_ID = uuid_1.v4();
+ServiceConsumer.clientIdPrefix = "SAMPLE";
 exports.ServiceConsumer = ServiceConsumer;
 //# sourceMappingURL=consumer.js.map

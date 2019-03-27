@@ -24,9 +24,9 @@ async function sampleKafkaPubSub() {
     const topic = 'SOME_TOPIC_ID'
 
     ServiceConsumer.Logger = new Logger();
-    ServiceConsumer.SERVICE_ID = SERVICE_ID;
+    ServiceConsumer.clientIdPrefix = "ACCT";
 
-    await ServiceConsumer.subscribe(topic);
+    await ServiceConsumer.init(topic);
     ServiceConsumer.listen((message) => {
         console.log(`Message: ${JSON.stringify(message, null, 2)}`);
     });
@@ -50,17 +50,16 @@ async function sampleKafkaPubSubHL() {
     const topic = 'SOME_TOPIC_ID'
 
     ServiceConsumerGroup.Logger = new Logger();
-    ServiceConsumerGroup.SERVICE_ID = SERVICE_ID;
+    ServiceConsumerGroup.clientIdPrefix = "ACCT";
 
-    await ServiceConsumerGroup.init(<options>);  // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
-    ServiceConsumerGroup.subscribe(topic);
+    await ServiceConsumerGroup.init(topic); //using defaultKafkaTopicConfig and defaultKafkaConsumerGroupOpts
     ServiceConsumerGroup.listen((message) => {
         console.log(`Message: ${JSON.stringify(message, null, 2)}`);
     });
 
     setInterval(async () => {
         console.log('sending....');
-        const msg = await ServiceHLProducer.buildAMessageObject({ date: `${new Date().toISOString()}` }, null, topic);
+        const msg = await ServiceHLProducer.buildAMessageObject({ date: `${new Date().toISOString()}` }, topic);
         try {
             await ServiceHLProducer.send([msg]);
         } catch (error) {

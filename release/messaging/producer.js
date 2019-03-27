@@ -19,7 +19,7 @@ class ServiceProducer {
             return this.client;
         });
     }
-    static init() {
+    static init(defaultTopic) {
         return __awaiter(this, void 0, void 0, function* () {
             const _self = this;
             yield new Promise((resolve, reject) => {
@@ -29,17 +29,19 @@ class ServiceProducer {
                 _self.Logger.log('Init Producer...');
                 _self._client = new kafka_node_1.KafkaClient({
                     kafkaHost: process.env.KAFKA_HOST,
-                    clientId: _self.SERVICE_ID
+                    clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
                 });
                 _self.client = new kafka_node_1.Producer(_self._client, {
                     requireAcks: 1,
                     ackTimeoutMs: 100
                 });
-                _self._client.once('ready', () => {
+                _self._client.once('ready', () => __awaiter(this, void 0, void 0, function* () {
                     _self.Logger.log('Producer:onReady - Ready....');
                     _self.isConnected = true;
+                    if (defaultTopic)
+                        yield _self.createTopic(defaultTopic);
                     resolve();
-                });
+                }));
                 _self.client.on('error', (err) => {
                     _self.Logger.error(`Producer - ERROR: ${err.stack}`);
                 });
@@ -58,7 +60,7 @@ class ServiceProducer {
         this.Logger.log("jsonData", JSON.stringify(jsonData, null, 2));
         return Buffer.from(JSON.stringify(jsonData));
     }
-    static buildAMessageObject(data, action, topic = this.SERVICE_ID) {
+    static buildAMessageObject(data, toTopic, action, fromTopic) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
                 yield this.init();
@@ -67,10 +69,10 @@ class ServiceProducer {
             const _self = this;
             return new Promise((resolve) => {
                 const record = {
-                    topic: topic,
+                    topic: toTopic,
                     messages: _self.prepareMsgBuffer(data, action),
                     partition: 0,
-                    key: _self.SERVICE_ID
+                    key: fromTopic
                 };
                 resolve(record);
             });
@@ -142,7 +144,7 @@ ServiceProducer.Logger = {
     log: (data) => { console.log(data); },
     error: (error) => { console.error(error); }
 };
-ServiceProducer.SERVICE_ID = uuid_1.v4();
+ServiceProducer.clientIdPrefix = "SAMPLE";
 ServiceProducer.isConnected = false;
 exports.ServiceProducer = ServiceProducer;
 ;
