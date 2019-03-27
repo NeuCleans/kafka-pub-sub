@@ -54,9 +54,8 @@ class ServiceProducer {
             timestamp: Date.now(),
             data: data
         };
-        if (action) {
-            jsonData = Object.assign({}, jsonData, { action: action });
-        }
+        if (action)
+            jsonData['action'] = action;
         this.Logger.log("jsonData: " + JSON.stringify(jsonData, null, 2));
         return Buffer.from(JSON.stringify(jsonData));
     }
@@ -72,8 +71,9 @@ class ServiceProducer {
                     topic: toTopic,
                     messages: _self.prepareMsgBuffer(data, action),
                     partition: 0,
-                    key: fromTopic
                 };
+                if (fromTopic)
+                    record['key'] = fromTopic;
                 resolve(record);
             });
         });

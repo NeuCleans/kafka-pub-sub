@@ -56,9 +56,8 @@ class ServiceHLProducer {
             timestamp: Date.now(),
             data: data
         };
-        if (action) {
-            jsonData = Object.assign({}, jsonData, { action: action });
-        }
+        if (action)
+            jsonData['action'] = action;
         this.Logger.log("jsonData: " + JSON.stringify(jsonData, null, 2));
         return Buffer.from(JSON.stringify(jsonData));
     }
@@ -73,8 +72,9 @@ class ServiceHLProducer {
                 const record = {
                     topic: toTopic,
                     messages: _self.prepareMsgBuffer(data, action),
-                    key: fromTopic
                 };
+                if (fromTopic)
+                    record['key'] = fromTopic;
                 resolve(record);
             });
         });
