@@ -115,8 +115,8 @@ export class ServiceHLProducer {
                 }
             };
 
-            // if (!this.isConnected) return;
-            console.log("isConnected:", this.isConnected);
+            // if (!_self.isConnected) return;
+            // console.log("isConnected:", _self.isConnected);
             _self._client.createTopics([topicToCreate], cb);
             // _self.client.createTopics([topic], cb);
         })

@@ -101,7 +101,6 @@ class ServiceHLProducer {
                         resolve();
                     }
                 };
-                console.log("isConnected:", this.isConnected);
                 _self._client.createTopics([topicToCreate], cb);
             }));
         });
