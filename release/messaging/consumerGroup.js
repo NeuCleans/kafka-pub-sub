@@ -23,21 +23,21 @@ class ServiceConsumerGroup {
     }
     static init(defaultTopic, defaultTopicOpts, consumerGroupOpts) {
         return __awaiter(this, void 0, void 0, function* () {
-            consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, consumerGroupOpts) : defaultOpts_1.defaultKafkaConsumerGroupOpts;
+            if (this.client)
+                return;
             const _self = this;
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 hlProducer_1.ServiceHLProducer.Logger = _self.Logger;
                 hlProducer_1.ServiceHLProducer.clientIdPrefix = _self.clientIdPrefix;
-                yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts)
+                yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost)
                     .then(() => {
                     _self.Logger.log('Init ConsumerGroup...');
-                    const kHost = process.env.KAFKA_HOST || 'localhost:9092';
                     _self._client = new kafka_node_1.KafkaClient({
-                        kafkaHost: kHost,
+                        kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
                         clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
                     });
-                    const options = Object.assign({}, consumerGroupOpts, { kafkaHost: kHost });
-                    _self.client = new kafka_node_1.ConsumerGroup(options, [defaultTopic]);
+                    consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, consumerGroupOpts) : defaultOpts_1.defaultKafkaConsumerGroupOpts;
+                    _self.client = new kafka_node_1.ConsumerGroup(consumerGroupOpts, [defaultTopic]);
                     _self.client.client = _self._client;
                     _self._client.once('ready', () => {
                         _self.Logger.log(`ConsumerGroup:onReady - Ready...`);

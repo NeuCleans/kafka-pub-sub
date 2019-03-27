@@ -22,15 +22,17 @@ class ServiceConsumer {
     }
     static init(defaultTopic) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (this.client)
+                return;
             const _self = this;
-            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+            yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 producer_1.ServiceProducer.Logger = _self.Logger;
                 producer_1.ServiceProducer.clientIdPrefix = _self.clientIdPrefix;
                 yield producer_1.ServiceProducer.init(defaultTopic)
                     .then(() => {
                     _self.Logger.log('Init Consumer...');
                     _self._client = new kafka_node_1.KafkaClient({
-                        kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
+                        kafkaHost: process.env.KAFKA_HOST,
                         clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
                     });
                     _self.client = new kafka_node_1.Consumer(_self._client, [], {

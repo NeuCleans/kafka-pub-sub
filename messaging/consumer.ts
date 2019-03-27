@@ -24,8 +24,10 @@ export class ServiceConsumer {
     }
 
     static async init(defaultTopic?: string) {
+        if (this.client) return;
         const _self = this;
-        return new Promise(async (resolve, reject) => {
+
+        await new Promise(async (resolve, reject) => {
             ServiceProducer.Logger = _self.Logger;
             ServiceProducer.clientIdPrefix = _self.clientIdPrefix;
 
@@ -34,7 +36,7 @@ export class ServiceConsumer {
                     _self.Logger.log('Init Consumer...');
 
                     _self._client = new KafkaClient({
-                        kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
+                        kafkaHost: process.env.KAFKA_HOST,
                         clientId: `${_self.clientIdPrefix}_${v4()}`
                     });
                     _self.client = new Consumer(

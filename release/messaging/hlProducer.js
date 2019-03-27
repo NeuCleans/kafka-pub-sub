@@ -20,8 +20,10 @@ class ServiceHLProducer {
             return this.client;
         });
     }
-    static init(defaultTopic, defaultTopicOpts) {
+    static init(defaultTopic, defaultTopicOpts, kHost) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (this.client)
+                return;
             const _self = this;
             yield new Promise((resolve, reject) => {
                 if (_self.isConnected) {
@@ -29,7 +31,7 @@ class ServiceHLProducer {
                 }
                 _self.Logger.log('Init HLProducer...');
                 _self._client = new kafka_node_1.KafkaClient({
-                    kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
+                    kafkaHost: kHost || process.env.KAFKA_HOST,
                     clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
                 });
                 _self.client = new kafka_node_1.Producer(_self._client, {
@@ -99,6 +101,7 @@ class ServiceHLProducer {
                         resolve();
                     }
                 };
+                console.log("isConnected:", this.isConnected);
                 _self._client.createTopics([topicToCreate], cb);
             }));
         });

@@ -26,27 +26,25 @@ export class ServiceConsumerGroup {
     }
 
     static async init(defaultTopic: string, defaultTopicOpts?: KafkaTopicConfig, consumerGroupOpts?: ConsumerGroupOptions) {
-        // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
-        consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, consumerGroupOpts) : (defaultKafkaConsumerGroupOpts as any);
+        if (this.client) return;
         const _self = this;
 
         await new Promise(async (resolve, reject) => {
             ServiceHLProducer.Logger = _self.Logger;
             ServiceHLProducer.clientIdPrefix = _self.clientIdPrefix;
 
-            await ServiceHLProducer.init(defaultTopic, defaultTopicOpts)
+            await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost)
                 .then(() => {
                     _self.Logger.log('Init ConsumerGroup...');
 
-                    const kHost = process.env.KAFKA_HOST || 'localhost:9092';
-
                     _self._client = new KafkaClient({
-                        kafkaHost: kHost,
+                        kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
                         clientId: `${_self.clientIdPrefix}_${v4()}`
                     });
 
-                    const options = Object.assign({}, consumerGroupOpts, { kafkaHost: kHost });
-                    _self.client = new ConsumerGroup(options, [defaultTopic]) //topics can't be empty
+                    // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
+                    consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, consumerGroupOpts) : (defaultKafkaConsumerGroupOpts as any);
+                    _self.client = new ConsumerGroup(consumerGroupOpts, [defaultTopic]) //topics can't be empty
                     //subscribe to service topic
                     _self.client.client = _self._client;
 

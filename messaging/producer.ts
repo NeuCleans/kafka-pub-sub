@@ -24,6 +24,7 @@ export class ServiceProducer {
     }
 
     static async init(defaultTopic?: string) {
+        if (this.client) return;
         const _self = this;
 
         await new Promise((resolve, reject) => {
@@ -32,7 +33,7 @@ export class ServiceProducer {
             _self.Logger.log('Init Producer...');
 
             _self._client = new KafkaClient({
-                kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
+                kafkaHost: process.env.KAFKA_HOST,
                 clientId: `${_self.clientIdPrefix}_${v4()}`
             });
 

@@ -25,7 +25,8 @@ export class ServiceHLProducer {
         return this.client;
     }
 
-    static async init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig) {
+    static async init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig, kHost?: string) {
+        if (this.client) return;
         const _self = this;
 
         await new Promise((resolve, reject) => {
@@ -34,7 +35,7 @@ export class ServiceHLProducer {
             _self.Logger.log('Init HLProducer...');
 
             _self._client = new KafkaClient({
-                kafkaHost: process.env.KAFKA_HOST || 'localhost:9092',
+                kafkaHost: kHost || process.env.KAFKA_HOST,
                 clientId: `${_self.clientIdPrefix}_${v4()}`
             });
 
@@ -96,6 +97,7 @@ export class ServiceHLProducer {
 
         kafkaTopicConfig = (kafkaTopicConfig) ?
             Object.assign({}, defaultKafkaTopicConfig, kafkaTopicConfig) : defaultKafkaTopicConfig
+
         const topicToCreate = {
             topic,
             ...kafkaTopicConfig
@@ -114,9 +116,9 @@ export class ServiceHLProducer {
             };
 
             // if (!this.isConnected) return;
-            // console.log("isConnected:", this.isConnected);
+            console.log("isConnected:", this.isConnected);
             _self._client.createTopics([topicToCreate], cb);
-            // this.client.createTopics([topic], cb);
+            // _self.client.createTopics([topic], cb);
         })
     }
 
