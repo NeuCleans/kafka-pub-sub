@@ -86,9 +86,12 @@ export class ServiceHLProducer {
         })
     }
 
-    static async createTopic(topic: string, kafkaTopicConfig: KafkaTopicConfig = defaultKafkaTopicConfig) {
+    static async createTopic(topic: string, kafkaTopicConfig?: KafkaTopicConfig) {
         if (!this.client) { await this.init(); }
         const _self = this;
+
+        kafkaTopicConfig = (kafkaTopicConfig) ? Object.assign({}, defaultKafkaTopicConfig, kafkaTopicConfig) : defaultKafkaTopicConfig
+
         const topicToCreate = {
             topic,
             ...kafkaTopicConfig

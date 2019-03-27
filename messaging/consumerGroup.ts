@@ -25,7 +25,7 @@ export class ServiceConsumerGroup {
 
     static async init(opts?: any) {
         // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
-        opts = opts || Object.assign({}, defaultKafkaConsumerGroupOpts, { groupId: this.SERVICE_ID });
+        opts = (opts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, opts) : Object.assign({}, defaultKafkaConsumerGroupOpts, { groupId: this.SERVICE_ID });
         const _self = this;
 
         await new Promise(async (resolve, reject) => {
