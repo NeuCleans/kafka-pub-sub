@@ -57,7 +57,7 @@ class ServiceProducer {
         if (action) {
             jsonData = Object.assign({}, jsonData, { action: action });
         }
-        this.Logger.log("jsonData", JSON.stringify(jsonData, null, 2));
+        this.Logger.log("jsonData: " + JSON.stringify(jsonData, null, 2));
         return Buffer.from(JSON.stringify(jsonData));
     }
     static buildAMessageObject(data, toTopic, action, fromTopic) {
@@ -122,7 +122,7 @@ class ServiceProducer {
                     }
                     ;
                     if (data) {
-                        _self.Logger.log(`Producer:send - data sent: ${JSON.stringify(data)} `);
+                        _self.Logger.log(`Producer:send - data sent: ${JSON.stringify(data)}`);
                         resolve();
                     }
                 };
