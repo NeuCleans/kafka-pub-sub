@@ -25,7 +25,7 @@ export class ServiceConsumerGroup {
         return this.client;
     }
 
-    static async init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig, consumerGroupOpts?: ConsumerGroupOptions) {
+    static async init(consumerGroupOpts?: ConsumerGroupOptions, defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig, ) {
         // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
         consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, consumerGroupOpts) : (defaultKafkaConsumerGroupOpts as any);
         const _self = this;

@@ -21,7 +21,7 @@ class ServiceConsumerGroup {
             return this.client;
         });
     }
-    static init(defaultTopic, defaultTopicOpts, consumerGroupOpts) {
+    static init(consumerGroupOpts, defaultTopic, defaultTopicOpts) {
         return __awaiter(this, void 0, void 0, function* () {
             consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, consumerGroupOpts) : defaultOpts_1.defaultKafkaConsumerGroupOpts;
             const _self = this;
