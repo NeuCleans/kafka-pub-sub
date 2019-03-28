@@ -18,6 +18,7 @@ Pub Sub wrapper around [kafka-node](https://github.com/SOHU-Co/kafka-node)
 ### Usage
 
 ### Sample
+
 ```
 const uuidByString = require("uuid-by-string");
 const kafkaPS = require('kafka-pub-sub');
@@ -30,13 +31,18 @@ function sampleKafkaPubSub() {
     const topic = uuidByString('jane@doe.com');
     kafkaPS.ServiceConsumer.init(topic, kHostCluster)
         .then(() => {
+            // kafkaPS.ServiceConsumer.listen((message) => {//message is automatically logged
+            //     console.log(JSON.stringify(message, null, 2));
+            //     kafkaPS.ServiceConsumer.commit();
+            // }, false); //DON't auto commit after each message. I will handle that.
+
             kafkaPS.ServiceConsumer.listen((message) => {
                 //message is automatically logged
-            });
+            }); //auto commit after each message
 
             kafkaPS.ServiceConsumer.onError((error) => {
                 console.log(`!!Error: ${JSON.stringify(error, null, 2)}`);
-            });
+            }, true);
 
             // kafkaPS.ServiceProducer.init(topic, kHostCluster).then(() => {
             setInterval(() => {
@@ -79,8 +85,8 @@ function sampleKafkaPubSubHL() {
         });
 }
 
-// sampleKafkaPubSub();
-sampleKafkaPubSubHL();
+sampleKafkaPubSub();
+// sampleKafkaPubSubHL();
 ```
 
 ## Contributing

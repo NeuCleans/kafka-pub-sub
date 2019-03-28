@@ -61,33 +61,34 @@ class ServiceConsumerGroup {
                 cb();
         });
     }
-    static listen(cb1) {
+    static listen(cb, commit = true) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
                 yield this.init();
             }
             this.Logger.log('ConsumerGroup:listen - listening...');
-            yield this._onMessage(cb1);
-            yield this._commit();
+            yield this._onMessage(cb, commit);
         });
     }
-    static _onMessage(cb) {
+    static _onMessage(cb, commit) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
                 yield this.init();
             }
             const _self = this;
             return new Promise((resolve, reject) => {
-                _self.client.on('message', (message) => {
+                _self.client.on('message', (message) => __awaiter(this, void 0, void 0, function* () {
                     if (message) {
                         if (message.hasOwnProperty('value') && message.value)
                             message.value = message.value.toString();
                         if (message.hasOwnProperty('key') && message.key)
                             message.key = message.key.toString();
                         _self.Logger.log(`ConsumerGroup:onMessage - Message: ${JSON.stringify(message, null, 2)}`);
-                        (cb) ? resolve(cb(message)) : resolve(message);
+                        if (commit)
+                            yield this._commit();
+                        resolve(cb(message));
                     }
-                });
+                }));
             });
         });
     }
@@ -188,7 +189,6 @@ class ServiceConsumerGroup {
             }
             const _self = this;
             return new Promise((resolve, reject) => {
-                _self.Logger.log('ConsumerGroup:commit - Committing...');
                 _self.client.commit((err, data) => {
                     if (!err) {
                         _self.Logger.log(`ConsumerGroup:commit - ${JSON.stringify(data)}`);

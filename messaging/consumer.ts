@@ -52,7 +52,6 @@ export class ServiceConsumer {
 
     static async subscribe(topic: string) {
         if (!this.client) { await this.init(); }
-
         try {
             await this._topicExists(topic);
         } catch (error) { // topic does not exist
@@ -69,24 +68,32 @@ export class ServiceConsumer {
         if (cb) cb();
     }
 
-    static async listen(cb1?: (message) => any) {
+    /**
+     *
+     *
+     * @static
+     * @param {(message) => any} cb
+     * @param {boolean} [commit=true]
+     * If you set commit to false, you are in charge of calling ServiceConsumer.commit(); likely in your message callback
+     * @memberof ServiceConsumer
+     */
+    static async listen(cb: (message) => any, commit: boolean = true) {
         if (!this.client) { await this.init(); }
         this.Logger.log('Consumer:listen - listening...')
-        await this._onMessage(cb1);
-        //TODO: handle commits
-        await this._commit();
+        await this._onMessage(cb, commit);
     }
 
-    private static async _onMessage(cb?: Function) {
+    private static async _onMessage(cb: Function, commit: boolean) {
         if (!this.client) { await this.init(); }
         const _self = this;
         return new Promise((resolve, reject) => {
-            _self.client.on('message', (message) => {
+            _self.client.on('message', async (message) => {
                 if (message) {
                     if (message.hasOwnProperty('value') && message.value) message.value = message.value.toString();
                     if (message.hasOwnProperty('key') && message.key) message.key = message.key.toString();
                     _self.Logger.log(`Consumer:onMessage - Message: ${JSON.stringify(message, null, 2)}`);
-                    (cb) ? resolve(cb(message)) : resolve(message);
+                    if (commit) await this._commit();
+                    resolve(cb(message));
                 }
             });
         })
@@ -168,7 +175,6 @@ export class ServiceConsumer {
         if (!this.client) { await this.init(); }
         const _self = this;
         return new Promise((resolve, reject) => {
-            _self.Logger.log('Consumer:commit - Committing...');
             _self.client.commit((err, data) => {
                 if (!err) {
                     _self.Logger.log(`Consumer:commit - ${JSON.stringify(data)}`);

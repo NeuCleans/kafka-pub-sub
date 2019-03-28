@@ -32,7 +32,6 @@ export class ServiceConsumerGroup {
         ServiceHLProducer.clientIdPrefix = this.clientIdPrefix;
 
         await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost);
-
         this.Logger.log('Init ConsumerGroup...');
 
         this._client = new KafkaClient({
@@ -47,7 +46,6 @@ export class ServiceConsumerGroup {
         this.client.client = this._client;
 
         await this._onReady();
-        // if (defaultTopic) await this.subscribe(defaultTopic);
     }
 
     static async subscribe(topic: string) {
@@ -66,24 +64,31 @@ export class ServiceConsumerGroup {
         if (cb) cb();
     }
 
-    static async listen(cb1?: (message) => any) {
+    /**
+     * @static
+     * @param {(message) => any} [cb]
+     * @param {boolean} [commit=true] can indicate if you want to handle commits
+     * or have the lib commit after every message.  If you set commit to false,
+     * you are in charge of calling ServiceConsumer.commit(); likely in your message callback
+     * @memberof ServiceConsumerGroup
+     */
+    static async listen(cb: (message) => any, commit: boolean = true) {
         if (!this.client) { await this.init(); }
         this.Logger.log('ConsumerGroup:listen - listening...')
-        await this._onMessage(cb1);
-        //TODO: handle commits
-        await this._commit();
+        await this._onMessage(cb, commit);
     }
 
-    private static async _onMessage(cb?: Function) {
+    private static async _onMessage(cb: Function, commit: boolean) {
         if (!this.client) { await this.init(); }
         const _self = this;
         return new Promise((resolve, reject) => {
-            _self.client.on('message', (message) => {
+            _self.client.on('message', async (message) => {
                 if (message) {
                     if (message.hasOwnProperty('value') && message.value) message.value = message.value.toString();
                     if (message.hasOwnProperty('key') && message.key) message.key = message.key.toString();
                     _self.Logger.log(`ConsumerGroup:onMessage - Message: ${JSON.stringify(message, null, 2)}`);
-                    (cb) ? resolve(cb(message)) : resolve(message);
+                    if (commit) await this._commit();
+                    resolve(cb(message))
                 }
             });
         })
@@ -165,7 +170,6 @@ export class ServiceConsumerGroup {
         if (!this.client) { await this.init(); }
         const _self = this;
         return new Promise((resolve, reject) => {
-            _self.Logger.log('ConsumerGroup:commit - Committing...');
             _self.client.commit((err, data) => {
                 if (!err) {
                     _self.Logger.log(`ConsumerGroup:commit - ${JSON.stringify(data)}`);
