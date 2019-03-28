@@ -44,14 +44,16 @@ export class ServiceConsumerGroup {
 
                     // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
                     consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, consumerGroupOpts) : (defaultKafkaConsumerGroupOpts as any);
-                    _self.client = new ConsumerGroup(consumerGroupOpts, [defaultTopic]); //topics can't be empty
+                    _self.client = new ConsumerGroup(consumerGroupOpts, ['test']); //topics can't be empty
                     //subscribe to service topic
                     _self.client.client = _self._client;
 
                     _self._client.on('ready', async () => {
+                        // setTimeout(async () => {
                         _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
-                        // await _self.subscribe(defaultTopic);
-                        resolve(await _self.subscribe(defaultTopic));
+                        await _self.subscribe(defaultTopic);
+                        resolve();
+                        // }, 5 * 1000);
                     });
 
                     _self.client.on('error', (err) => {
@@ -67,15 +69,13 @@ export class ServiceConsumerGroup {
 
         await new Promise(async (resolve, reject) => {
             const cb = async (err) => {
-                if (err) {
-                    resolve(await _self.addTopic(topic))
-                    // await _self.addTopic(topic).then(() => resolve())
+                if (err) { //topic already exists
+                    await _self.addTopic(topic);
+                    resolve()
                 } else {
-                    await ServiceHLProducer.createTopic(topic)
-                        .then(async () => {
-                            // await _self.addTopic(topic).then(() => resolve())
-                            resolve(await _self.addTopic(topic))
-                        });
+                    await ServiceHLProducer.createTopic(topic);
+                    await _self.addTopic(topic)
+                    resolve();
                 }
             }
             _self._client.topicExists([topic], cb);
@@ -86,7 +86,7 @@ export class ServiceConsumerGroup {
         if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
         const _self = this;
 
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             const cb = (err, data) => {
                 if (err) {
                     _self.Logger.error(`ConsumerGroup:addTopic - ${err.stack}`);
@@ -98,13 +98,32 @@ export class ServiceConsumerGroup {
                 }
             };
 
-            // https://github.com/SOHU-Co/kafka-node/issues/781#issuecomment-336154404
-            _self._client.refreshMetadata([topic], (err) => {
-                if (!err) {
-                    _self.client.addTopics([topic], cb); // only works w/ string[] not Topic[] and must refreshMetadata
+            try {
+                // https://github.com/SOHU-Co/kafka-node/issues/781#issuecomment-336154404
+                await _self.refreshMetadata(topic);
+                await _self.client.addTopics([topic], cb); // only works w/ string[] not Topic[] and must refreshMetadata
+            } catch (error) {
+                if (error.stack.indexOf('LeaderNotAvailable') > -1) {
+                    _self.Logger.log("ConsumerGroup:refreshMetadata - LeaderNotAvailable...Retrying...");
+                    await _self.addTopic(topic);
+                } else {
+                    _self.Logger.error("ConsumerGroup:refreshMetadata - " + error.stack);
+                    _self.Logger.error("ConsumerGroup:addTopics - TOPIC NOT ADDED: " + topic)
                 }
-            });
+            }
         })
+    }
+
+    static async refreshMetadata(topic: string) {
+        if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
+        const _self = this;
+
+        return new Promise((resolve, reject) => {
+            _self._client.refreshMetadata([topic], async (err) => {
+                if (err) reject(err);
+                if (!err) resolve();
+            });
+        });
     }
 
     // static async commit() {

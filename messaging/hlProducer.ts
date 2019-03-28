@@ -29,7 +29,7 @@ export class ServiceHLProducer {
         if (this.client) return;
         const _self = this;
         await new Promise((resolve, reject) => {
-            if (_self.isConnected) { resolve(); }
+            if (_self.isConnected) { return resolve(); }
 
             _self.Logger.log('Init HLProducer...');
 
@@ -50,7 +50,11 @@ export class ServiceHLProducer {
             _self.client.on('ready', async () => {
                 _self.Logger.log('HLProducer:onReady - Ready!....');
                 _self.isConnected = true;
-                if (defaultTopic) await _self.createTopic(defaultTopic, defaultTopicOpts); //create default mailbox
+                try {
+                    if (defaultTopic) await _self.createTopic(defaultTopic, defaultTopicOpts); //create default mailbox
+                } catch (error) {
+                    if (defaultTopic) await _self.createTopic(defaultTopic, defaultTopicOpts);
+                }
                 resolve();
             });
 
@@ -102,6 +106,18 @@ export class ServiceHLProducer {
             ...kafkaTopicConfig
         }
 
+
+        const checkTopicCreated = new Promise<void>((resolve, reject) => {
+            _self._client.topicExists([topic], (err) => {
+                if (err) { // topic does exist
+                    _self.Logger.error("HLProducer: Topic (" + topic + ") exits...");
+                    resolve();
+                } else { // topic does not exist
+                    reject();
+                }
+            });
+        })
+
         await new Promise(async (resolve, reject) => {
             const cb = (error, data) => {
                 if (error) {
@@ -117,14 +133,12 @@ export class ServiceHLProducer {
             // if (!_self.isConnected) return;
             // console.log("isConnected:", _self.isConnected);
             // _self.client.createTopics([topic], cb);
-
-            _self._client.topicExists([topic], (err) => {
-                if (!err) _self._client.createTopics([topicToCreate], cb);
-                if (err) {
-                    _self.Logger.error("HLProducer: Topic (" + topic + ") exits...");
-                    resolve();
-                }
-            });
+            try {
+                await checkTopicCreated
+                resolve();
+            } catch (error) {
+                _self._client.createTopics([topicToCreate], cb);
+            }
         })
     }
 
@@ -147,11 +161,17 @@ export class ServiceHLProducer {
         // if (!this.isConnected) throw new Error('Producer Not Connected To Kafka');
         const _self = this;
 
-        await new Promise(async (resolve, reject) => {
+        await new Promise<void>(async (resolve, reject) => {
             const cb = (error, data) => {
                 if (error) {
-                    _self.Logger.error("HLProducer:send - " + error.stack);
-                    reject(error);
+                    if (error.stack.indexOf('LeaderNotAvailable') > -1 ||
+                        error.stack.indexOf('UnknownTopicOrPartition') > -1) {
+                        _self.Logger.log("HLProducer:send - error...retrying");
+                        resolve(_self.send(records))
+                    } else {
+                        _self.Logger.error("HLProducer:send - " + error.stack);
+                        reject(error);
+                    }
                 };
                 if (data) {
                     _self.Logger.log(`HLProducer:send - data sent: ${JSON.stringify(data)}`);

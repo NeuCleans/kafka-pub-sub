@@ -27,7 +27,7 @@ class ServiceHLProducer {
             const _self = this;
             yield new Promise((resolve, reject) => {
                 if (_self.isConnected) {
-                    resolve();
+                    return resolve();
                 }
                 _self.Logger.log('Init HLProducer...');
                 _self._client = new kafka_node_1.KafkaClient({
@@ -42,8 +42,14 @@ class ServiceHLProducer {
                 _self.client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
                     _self.Logger.log('HLProducer:onReady - Ready!....');
                     _self.isConnected = true;
-                    if (defaultTopic)
-                        yield _self.createTopic(defaultTopic, defaultTopicOpts);
+                    try {
+                        if (defaultTopic)
+                            yield _self.createTopic(defaultTopic, defaultTopicOpts);
+                    }
+                    catch (error) {
+                        if (defaultTopic)
+                            yield _self.createTopic(defaultTopic, defaultTopicOpts);
+                    }
                     resolve();
                 }));
                 _self.client.on('error', (err) => {
@@ -90,6 +96,17 @@ class ServiceHLProducer {
             kafkaTopicConfig = (kafkaTopicConfig) ?
                 Object.assign({}, defaultOpts_1.defaultKafkaTopicConfig, kafkaTopicConfig) : defaultOpts_1.defaultKafkaTopicConfig;
             const topicToCreate = Object.assign({ topic }, kafkaTopicConfig);
+            const checkTopicCreated = new Promise((resolve, reject) => {
+                _self._client.topicExists([topic], (err) => {
+                    if (err) {
+                        _self.Logger.error("HLProducer: Topic (" + topic + ") exits...");
+                        resolve();
+                    }
+                    else {
+                        reject();
+                    }
+                });
+            });
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 const cb = (error, data) => {
                     if (error) {
@@ -101,14 +118,13 @@ class ServiceHLProducer {
                         resolve();
                     }
                 };
-                _self._client.topicExists([topic], (err) => {
-                    if (!err)
-                        _self._client.createTopics([topicToCreate], cb);
-                    if (err) {
-                        _self.Logger.error("HLProducer: Topic (" + topic + ") exits...");
-                        resolve();
-                    }
-                });
+                try {
+                    yield checkTopicCreated;
+                    resolve();
+                }
+                catch (error) {
+                    _self._client.createTopics([topicToCreate], cb);
+                }
             }));
         });
     }
@@ -130,8 +146,15 @@ class ServiceHLProducer {
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 const cb = (error, data) => {
                     if (error) {
-                        _self.Logger.error("HLProducer:send - " + error.stack);
-                        reject(error);
+                        if (error.stack.indexOf('LeaderNotAvailable') > -1 ||
+                            error.stack.indexOf('UnknownTopicOrPartition') > -1) {
+                            _self.Logger.log("HLProducer:send - error...retrying");
+                            resolve(_self.send(records));
+                        }
+                        else {
+                            _self.Logger.error("HLProducer:send - " + error.stack);
+                            reject(error);
+                        }
                     }
                     ;
                     if (data) {

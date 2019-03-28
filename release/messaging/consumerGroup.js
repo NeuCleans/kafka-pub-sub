@@ -37,11 +37,12 @@ class ServiceConsumerGroup {
                         clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
                     });
                     consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, consumerGroupOpts) : defaultOpts_1.defaultKafkaConsumerGroupOpts;
-                    _self.client = new kafka_node_1.ConsumerGroup(consumerGroupOpts, [defaultTopic]);
+                    _self.client = new kafka_node_1.ConsumerGroup(consumerGroupOpts, ['test']);
                     _self.client.client = _self._client;
                     _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
                         _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
-                        resolve(yield _self.subscribe(defaultTopic));
+                        yield _self.subscribe(defaultTopic);
+                        resolve();
                     }));
                     _self.client.on('error', (err) => {
                         _self.Logger.error(`ConsumerGroup:onError - ERROR: ${err.stack}`);
@@ -59,13 +60,13 @@ class ServiceConsumerGroup {
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 const cb = (err) => __awaiter(this, void 0, void 0, function* () {
                     if (err) {
-                        resolve(yield _self.addTopic(topic));
+                        yield _self.addTopic(topic);
+                        resolve();
                     }
                     else {
-                        yield hlProducer_1.ServiceHLProducer.createTopic(topic)
-                            .then(() => __awaiter(this, void 0, void 0, function* () {
-                            resolve(yield _self.addTopic(topic));
-                        }));
+                        yield hlProducer_1.ServiceHLProducer.createTopic(topic);
+                        yield _self.addTopic(topic);
+                        resolve();
                     }
                 });
                 _self._client.topicExists([topic], cb);
@@ -78,7 +79,7 @@ class ServiceConsumerGroup {
                 throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first");
             }
             const _self = this;
-            return new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 const cb = (err, data) => {
                     if (err) {
                         _self.Logger.error(`ConsumerGroup:addTopic - ${err.stack}`);
@@ -89,11 +90,36 @@ class ServiceConsumerGroup {
                         resolve();
                     }
                 };
-                _self._client.refreshMetadata([topic], (err) => {
-                    if (!err) {
-                        _self.client.addTopics([topic], cb);
+                try {
+                    yield _self.refreshMetadata(topic);
+                    yield _self.client.addTopics([topic], cb);
+                }
+                catch (error) {
+                    if (error.stack.indexOf('LeaderNotAvailable') > -1) {
+                        _self.Logger.log("ConsumerGroup:refreshMetadata - LeaderNotAvailable...Retrying...");
+                        yield _self.addTopic(topic);
                     }
-                });
+                    else {
+                        _self.Logger.error("ConsumerGroup:refreshMetadata - " + error.stack);
+                        _self.Logger.error("ConsumerGroup:addTopics - TOPIC NOT ADDED: " + topic);
+                    }
+                }
+            }));
+        });
+    }
+    static refreshMetadata(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first");
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.refreshMetadata([topic], (err) => __awaiter(this, void 0, void 0, function* () {
+                    if (err)
+                        reject(err);
+                    if (!err)
+                        resolve();
+                }));
             });
         });
     }
