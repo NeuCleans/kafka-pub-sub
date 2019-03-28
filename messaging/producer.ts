@@ -2,7 +2,7 @@
 // https://www.npmjs.com/package/kafka-node
 // https://github.com/SOHU-Co/kafka-node
 // https://github.com/theotow/nodejs-kafka-example
-import { KafkaClient, Producer, ProduceRequest } from "kafka-node";
+import { KafkaClient, Producer, ProduceRequest, CreateTopicRequest } from "kafka-node";
 import { v4 } from "uuid";
 
 export class ServiceProducer {
@@ -24,38 +24,43 @@ export class ServiceProducer {
     }
 
     static async init(defaultTopic?: string, kHost?: string) {
-        if (this.client) return;
-        const _self = this;
+        if (this.client && this.isConnected) return;
 
-        await new Promise((resolve, reject) => {
-            if (_self.isConnected) { resolve(); }
+        // const _self = this;
+        // return new Promise((resolve, reject) => {
+        this.Logger.log('Init Producer...');
 
-            _self.Logger.log('Init Producer...');
-
-            _self._client = new KafkaClient({
-                kafkaHost: kHost || process.env.KAFKA_HOST,
-                clientId: `${_self.clientIdPrefix}_${v4()}`
-            });
-
-            _self.client = new Producer(
-                _self._client,
-                {
-                    requireAcks: 1,
-                    ackTimeoutMs: 100
-                }
-            );
-
-            _self.client.on('ready', async () => {
-                _self.Logger.log('Producer:onReady - Ready....');
-                _self.isConnected = true;
-                if (defaultTopic) await _self.createTopic(defaultTopic);
-                resolve();
-            });
-
-            _self.client.on('error', (err) => {
-                _self.Logger.error(`Producer:onError - ERROR: ${err.stack}`);
-            });
+        this._client = new KafkaClient({
+            kafkaHost: kHost || process.env.KAFKA_HOST,
+            clientId: `${this.clientIdPrefix}_${v4()}`
         });
+
+        this.client = new Producer(
+            this._client,
+            {
+                requireAcks: 1,
+                ackTimeoutMs: 100
+            }
+        );
+
+        await this._onReady();
+        if (defaultTopic) {
+            await this.createTopic(defaultTopic);
+        }
+        // _self.client.on('ready', async () => {
+        //     _self.Logger.log('Producer:onReady - Ready....');
+        //     _self.isConnected = true;
+        //     if (defaultTopic) {
+        //         await _self.createTopic(defaultTopic);
+        //     }
+        //     resolve();
+        // });
+
+        // _self.client.on('error', async (err) => {
+        //     _self.Logger.error(`Producer:onError - ERROR: ${err.stack}`);
+        //     reject(err);
+        // });
+        // });
     }
 
     static prepareMsgBuffer(data: any, action?: string) {
@@ -66,53 +71,113 @@ export class ServiceProducer {
         }
         if (action) jsonData['action'] = action;
 
-        this.Logger.log("jsonData: " + JSON.stringify(jsonData, null, 2));
+        // this.Logger.log("jsonData: " + JSON.stringify(jsonData, null, 2));
         return Buffer.from(JSON.stringify(jsonData));
     }
 
-    static async buildAMessageObject(data: any, toTopic: string, fromTopic?: string, action?: string): Promise<ProduceRequest> {
+    static async buildAMessageObject(data: any, toTopic: string, fromTopic?: string, action?: string) {
         if (!this.client) { await this.init(); };
         const _self = this;
-        return new Promise<ProduceRequest>((resolve) => {
-            const record = {
-                topic: toTopic, //To
-                messages: _self.prepareMsgBuffer(data, action),
-                partition: 0,
-                // key: fromTopic //From
-            }
-            if (fromTopic) record['key'] = fromTopic; //From
-            // console.log(JSON.stringify(record, null, 2));
-            // return record;
-            resolve(record);
-        })
+        // return new Promise<ProduceRequest>((resolve) => {
+        const record = {
+            topic: toTopic, //To
+            messages: _self.prepareMsgBuffer(data, action),
+            partition: 0,
+            // key: fromTopic //From
+        }
+        if (fromTopic) record['key'] = fromTopic; //From
+        // console.log(JSON.stringify(record, null, 2));
+        return record as ProduceRequest;
+        // resolve(record);
+        // })
     }
 
     static async createTopic(topic: string) {
         if (!this.client) { await this.init(); }
-        const _self = this;
-        await new Promise(async (resolve, reject) => {
-            const cb = (error, data) => {
-                if (error) {
-                    _self.Logger.error("Producer:createTopic - " + error.stack);
-                    reject(error);
-                }
-                if (data) {
-                    _self.Logger.log(`Producer:createTopic - Topic created: ${JSON.stringify(data)}`);
-                    resolve();
-                }
-            };
+        try {
+            await this._topicExists(topic);
+        } catch (error) {
+            // await this._refreshMetadata(topic);
+            await this._createTopics(topic);
+        }
+    }
 
-            // if (!_self.isConnected) return;
-            // console.log("isConnected:", _self.isConnected);
-            _self.client.createTopics([topic], cb);
+    static async send(records: ProduceRequest | ProduceRequest[]) {
+        await this._send(records);
+    }
+
+    static async onError(cb?: Function) {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self.client.on('error', async (err) => {
+                _self.Logger.error(`Producer:onError - ERROR: ${err.stack}`);
+                (cb) ? resolve(cb(err)) : reject(err);
+            });
         })
     }
 
-    static async refreshTopic(topic: string) {
+    private static async _onReady() {
         if (!this.client) { await this.init(); }
-        // https://github.com/SOHU-Co/kafka-node/issues/676#issuecomment-302401249
-        const cb = () => { };
-        this._client.refreshMetadata([topic], cb); //cb is not optional here
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self._client.on('ready', async () => {
+                _self.Logger.log(`Producer:onReady - Ready...`);
+                resolve();
+            });
+        })
+    }
+
+    private static async _topicExists(topic: string) {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self._client.topicExists([topic], (err) => {
+                if (err) { //topic does not exist
+                    // _self.Logger.error(err.stack);
+                    _self.Logger.log(`Producer:topicExists - Topic Does Not Exist`);
+                    reject(err);
+                } else { //topic does exist
+                    _self.Logger.log(`Producer:topicExists - Topic (${topic}) Already Exists`);
+                    resolve();
+                }
+            });
+        })
+    }
+
+    private static async _createTopics(topic: string[] | string) {
+        topic = Array.isArray(topic) ? topic : [topic];
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            // _self._client.createTopics([{ topic, partitions: 0, replicationFactor: 1 }], cb)
+            _self.client.createTopics((topic as string[]), true, (err, data) => {
+                if (err) { //topic does not exist
+                    _self.Logger.error(`Producer:createTopics - ${err.stack}`);
+                    reject(err);
+                } else { //topic does exist
+                    _self.Logger.log(`Producer:createTopics - Topics ${JSON.stringify(data)} created`);
+                    resolve();
+                }
+            });
+        })
+    }
+
+    private static async _refreshMetadata(topic: string) {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            // https://github.com/SOHU-Co/kafka-node/issues/676#issuecomment-302401249
+            _self._client.refreshMetadata([topic], (err) => { //cb is not optional here
+                if (!err) {
+                    _self.Logger.log(`Producer:refreshMetadata - Successful`);
+                    resolve();
+                } else {
+                    _self.Logger.error(`Producer:refreshMetadata - ${err.stack}`);
+                    reject(err);
+                }
+            });
+        })
     }
 
     /**
@@ -122,32 +187,31 @@ export class ServiceProducer {
      * @throws Error if Producer Not Yet Connected To Kafka
      */
 
-    static async send(records: ProduceRequest[]) {
+    private static async _send(data: any) {
+        data = Array.isArray(data) ? (data as ProduceRequest[]) : [data];
         if (!this.client) { await this.init(); }
-        // if (!this.isConnected) throw new Error('Producer Not Connected To Kafka');
         const _self = this;
-
-        await new Promise(async (resolve, reject) => {
-            const cb = (error, data) => {
+        await new Promise<void>(async (resolve, reject) => {
+            _self.client.send(data, (error, data) => {
                 if (error) {
-                    _self.Logger.error("Producer:send - " + error.stack)
+                    _self.Logger.error("Producer:send - " + error.stack);
                     reject(error);
                 };
                 if (data) {
                     _self.Logger.log(`Producer:send - data sent: ${JSON.stringify(data)}`);
                     resolve();
                 }
-            }
-            _self.client.send(records, cb);
-        });
+            });
+        })
     }
 
-    static close() {
+    static close(cb?: Function) {
         if (!this.isConnected) return;
         const _self = this;
         this.client.close(() => {
             _self.isConnected = false;
             _self.Logger.log('Producer:close - Closed');
+            if (cb) { cb(); }
         });
     }
 };

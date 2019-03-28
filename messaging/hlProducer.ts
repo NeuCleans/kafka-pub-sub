@@ -110,7 +110,7 @@ export class ServiceHLProducer {
         const checkTopicCreated = new Promise<void>((resolve, reject) => {
             _self._client.topicExists([topic], (err) => {
                 if (err) { // topic does exist
-                    _self.Logger.error("HLProducer: Topic (" + topic + ") exits...");
+                    _self.Logger.error("HLProducer: Topic (" + topic + ") exists...");
                     resolve();
                 } else { // topic does not exist
                     reject();
@@ -167,6 +167,7 @@ export class ServiceHLProducer {
                     if (error.stack.indexOf('LeaderNotAvailable') > -1 ||
                         error.stack.indexOf('UnknownTopicOrPartition') > -1) {
                         _self.Logger.log("HLProducer:send - error...retrying");
+                        _self.Logger.error(error.stack);
                         resolve(_self.send(records))
                     } else {
                         _self.Logger.error("HLProducer:send - " + error.stack);

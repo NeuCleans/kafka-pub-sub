@@ -29,24 +29,22 @@ class ServiceConsumerGroup {
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                 hlProducer_1.ServiceHLProducer.Logger = _self.Logger;
                 hlProducer_1.ServiceHLProducer.clientIdPrefix = _self.clientIdPrefix;
-                yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost)
-                    .then(() => {
-                    _self.Logger.log('Init ConsumerGroup...');
-                    _self._client = new kafka_node_1.KafkaClient({
-                        kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
-                        clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
-                    });
-                    consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, consumerGroupOpts) : defaultOpts_1.defaultKafkaConsumerGroupOpts;
-                    _self.client = new kafka_node_1.ConsumerGroup(consumerGroupOpts, ['test']);
-                    _self.client.client = _self._client;
-                    _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
-                        _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
-                        yield _self.subscribe(defaultTopic);
-                        resolve();
-                    }));
-                    _self.client.on('error', (err) => {
-                        _self.Logger.error(`ConsumerGroup:onError - ERROR: ${err.stack}`);
-                    });
+                yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost);
+                _self.Logger.log('Init ConsumerGroup...');
+                _self._client = new kafka_node_1.KafkaClient({
+                    kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
+                    clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
+                });
+                consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, consumerGroupOpts) : defaultOpts_1.defaultKafkaConsumerGroupOpts;
+                _self.client = new kafka_node_1.ConsumerGroup(consumerGroupOpts, ['test']);
+                _self.client.client = _self._client;
+                _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
+                    _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
+                    yield _self.subscribe(defaultTopic);
+                    resolve();
+                }));
+                _self.client.on('error', (err) => {
+                    _self.Logger.error(`ConsumerGroup:onError - ERROR: ${err.stack}`);
                 });
             }));
         });
@@ -91,7 +89,6 @@ class ServiceConsumerGroup {
                     }
                 };
                 try {
-                    yield _self.refreshMetadata(topic);
                     yield _self.client.addTopics([topic], cb);
                 }
                 catch (error) {

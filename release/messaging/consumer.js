@@ -24,32 +24,22 @@ class ServiceConsumer {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.client)
                 return;
-            const _self = this;
-            yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                producer_1.ServiceProducer.Logger = _self.Logger;
-                producer_1.ServiceProducer.clientIdPrefix = _self.clientIdPrefix;
-                yield producer_1.ServiceProducer.init(defaultTopic)
-                    .then(() => {
-                    _self.Logger.log('Init Consumer...');
-                    _self._client = new kafka_node_1.KafkaClient({
-                        kafkaHost: kHost || process.env.KAFKA_HOST,
-                        clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
-                    });
-                    _self.client = new kafka_node_1.Consumer(_self._client, [], {
-                        autoCommit: false,
-                        fromOffset: true
-                    });
-                    _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
-                        _self.Logger.log(`Consumer:onReady - Ready...`);
-                        if (defaultTopic)
-                            yield _self.subscribe(defaultTopic);
-                        resolve();
-                    }));
-                    _self.client.on('error', (err) => {
-                        _self.Logger.error(`Consumer:onError - ERROR: ${err.stack}`);
-                    });
-                });
-            }));
+            producer_1.ServiceProducer.Logger = this.Logger;
+            producer_1.ServiceProducer.clientIdPrefix = this.clientIdPrefix;
+            yield producer_1.ServiceProducer.init(defaultTopic, kHost);
+            this.Logger.log('Init Consumer...');
+            this._client = new kafka_node_1.KafkaClient({
+                kafkaHost: kHost || process.env.KAFKA_HOST,
+                clientId: `${this.clientIdPrefix}_${uuid_1.v4()}`,
+                requestTimeout: 9999999
+            });
+            this.client = new kafka_node_1.Consumer(this._client, [], {
+                autoCommit: false,
+                fromOffset: true
+            });
+            yield this._onReady();
+            if (defaultTopic)
+                yield this.subscribe(defaultTopic);
         });
     }
     static subscribe(topic) {
@@ -57,41 +47,13 @@ class ServiceConsumer {
             if (!this.client) {
                 yield this.init();
             }
-            const _self = this;
-            yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                const cb = (err) => {
-                    if (!err) {
-                        resolve(_self.addTopic(topic));
-                    }
-                    else {
-                        producer_1.ServiceProducer.createTopic(topic)
-                            .then(() => {
-                            resolve(_self.addTopic(topic));
-                        });
-                    }
-                };
-                _self._client.topicExists([topic], cb);
-            }));
-        });
-    }
-    static addTopic(topic) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
+            try {
+                yield this._topicExists(topic);
             }
-            const _self = this;
-            const cb = (err, data) => {
-                if (err) {
-                    _self.Logger.error(`Consumer:addTopic - ${err.stack}`);
-                }
-                if (data)
-                    _self.Logger.log(`Consumer:addTopic - Topic: ${JSON.stringify(data)} added`);
-            };
-            this._client.refreshMetadata([topic], (err) => {
-                if (!err) {
-                    _self.client.addTopics([{ topic: topic, partition: 0, offset: 0 }], cb);
-                }
-            });
+            catch (error) {
+                yield producer_1.ServiceProducer.createTopic(topic);
+            }
+            yield this._addTopic(topic);
         });
     }
     static listen(cb1) {
@@ -99,20 +61,138 @@ class ServiceConsumer {
             if (!this.client) {
                 yield this.init();
             }
+            this.Logger.log('Consumer:listen - listening...');
+            yield this._onMessage(cb1);
+            yield this._commit();
+        });
+    }
+    static _onMessage(cb) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
             const _self = this;
-            this.client.on('message', (message) => {
-                this.client.commit((err, data) => {
-                    _self.Logger.log('Consumer:onMessage - Committing...');
-                    if (err) {
-                        _self.Logger.log(`Consumer:onMessage - Error: ${err.stack}`);
-                    }
-                    if (data) {
-                        _self.Logger.log(`Consumer:onMessage - Data: ${JSON.stringify(data)}`);
+            return new Promise((resolve, reject) => {
+                _self.client.on('message', (message) => {
+                    if (message) {
                         if (message.hasOwnProperty('value') && message.value)
                             message.value = message.value.toString();
                         if (message.hasOwnProperty('key') && message.key)
                             message.key = message.key.toString();
-                        return ((cb1) ? cb1(message) : message);
+                        _self.Logger.log(`Consumer:onMessage - Message: ${JSON.stringify(message, null, 2)}`);
+                        (cb) ? resolve(cb(message)) : resolve(message);
+                    }
+                });
+            });
+        });
+    }
+    static onError(cb) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            this.Logger.log('Consumer:onError - listening for errors...');
+            return new Promise((resolve, reject) => {
+                _self.client.on('error', (err) => __awaiter(this, void 0, void 0, function* () {
+                    _self.Logger.error(`Consumer:onError - ERROR: ${err.stack}`);
+                    (cb) ? resolve(cb(err)) : reject(err);
+                }));
+            });
+        });
+    }
+    static _onReady() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
+                    _self.Logger.log(`Consumer:onReady - Ready...`);
+                    resolve();
+                }));
+            });
+        });
+    }
+    static _addTopic(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            topic = Array.isArray(topic) ? topic : [topic];
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self.client.addTopics(topic, (err, data) => {
+                    console.log(JSON.stringify(err, null, 2));
+                    if (err) {
+                        _self.Logger.error(`Consumer:addTopic - ${err.stack}`);
+                        reject(err);
+                    }
+                    else {
+                        _self.Logger.log(`Consumer:addTopic - Topic: ${JSON.stringify(data)} added`);
+                        resolve();
+                    }
+                }, false);
+            });
+        });
+    }
+    static _topicExists(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.topicExists([topic], (err) => {
+                    if (err) {
+                        _self.Logger.log(`Consumer:topicExists - Topic Does Not Exist`);
+                        reject(err);
+                    }
+                    else {
+                        _self.Logger.log(`Consumer:topicExists - Topic (${topic}) Already Exists`);
+                        resolve();
+                    }
+                });
+            });
+        });
+    }
+    static _refreshMetadata(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.refreshMetadata([topic], (err) => {
+                    if (!err) {
+                        _self.Logger.log(`Consumer:refreshMetadata - Successful`);
+                        resolve();
+                    }
+                    else {
+                        _self.Logger.error(`Consumer:refreshMetadata - ${err.stack}`);
+                        reject(err);
+                    }
+                });
+            });
+        });
+    }
+    static _commit() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self.Logger.log('Consumer:commit - Committing...');
+                _self.client.commit((err, data) => {
+                    if (!err) {
+                        _self.Logger.log(`Consumer:commit - ${JSON.stringify(data)}`);
+                        resolve();
+                    }
+                    else {
+                        _self.Logger.error(`Consumer:commit - ${err.stack}`);
+                        reject(err);
                     }
                 });
             });

@@ -21,33 +21,21 @@ class ServiceProducer {
     }
     static init(defaultTopic, kHost) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (this.client)
+            if (this.client && this.isConnected)
                 return;
-            const _self = this;
-            yield new Promise((resolve, reject) => {
-                if (_self.isConnected) {
-                    resolve();
-                }
-                _self.Logger.log('Init Producer...');
-                _self._client = new kafka_node_1.KafkaClient({
-                    kafkaHost: kHost || process.env.KAFKA_HOST,
-                    clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
-                });
-                _self.client = new kafka_node_1.Producer(_self._client, {
-                    requireAcks: 1,
-                    ackTimeoutMs: 100
-                });
-                _self.client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
-                    _self.Logger.log('Producer:onReady - Ready....');
-                    _self.isConnected = true;
-                    if (defaultTopic)
-                        yield _self.createTopic(defaultTopic);
-                    resolve();
-                }));
-                _self.client.on('error', (err) => {
-                    _self.Logger.error(`Producer:onError - ERROR: ${err.stack}`);
-                });
+            this.Logger.log('Init Producer...');
+            this._client = new kafka_node_1.KafkaClient({
+                kafkaHost: kHost || process.env.KAFKA_HOST,
+                clientId: `${this.clientIdPrefix}_${uuid_1.v4()}`
             });
+            this.client = new kafka_node_1.Producer(this._client, {
+                requireAcks: 1,
+                ackTimeoutMs: 100
+            });
+            yield this._onReady();
+            if (defaultTopic) {
+                yield this.createTopic(defaultTopic);
+            }
         });
     }
     static prepareMsgBuffer(data, action) {
@@ -58,7 +46,6 @@ class ServiceProducer {
         };
         if (action)
             jsonData['action'] = action;
-        this.Logger.log("jsonData: " + JSON.stringify(jsonData, null, 2));
         return Buffer.from(JSON.stringify(jsonData));
     }
     static buildAMessageObject(data, toTopic, fromTopic, action) {
@@ -68,16 +55,14 @@ class ServiceProducer {
             }
             ;
             const _self = this;
-            return new Promise((resolve) => {
-                const record = {
-                    topic: toTopic,
-                    messages: _self.prepareMsgBuffer(data, action),
-                    partition: 0,
-                };
-                if (fromTopic)
-                    record['key'] = fromTopic;
-                resolve(record);
-            });
+            const record = {
+                topic: toTopic,
+                messages: _self.prepareMsgBuffer(data, action),
+                partition: 0,
+            };
+            if (fromTopic)
+                record['key'] = fromTopic;
+            return record;
         });
     }
     static createTopic(topic) {
@@ -85,39 +70,117 @@ class ServiceProducer {
             if (!this.client) {
                 yield this.init();
             }
-            const _self = this;
-            yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                const cb = (error, data) => {
-                    if (error) {
-                        _self.Logger.error("Producer:createTopic - " + error.stack);
-                        reject(error);
-                    }
-                    if (data) {
-                        _self.Logger.log(`Producer:createTopic - Topic created: ${JSON.stringify(data)}`);
-                        resolve();
-                    }
-                };
-                _self.client.createTopics([topic], cb);
-            }));
-        });
-    }
-    static refreshTopic(topic) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
+            try {
+                yield this._topicExists(topic);
             }
-            const cb = () => { };
-            this._client.refreshMetadata([topic], cb);
+            catch (error) {
+                yield this._createTopics(topic);
+            }
         });
     }
     static send(records) {
         return __awaiter(this, void 0, void 0, function* () {
+            yield this._send(records);
+        });
+    }
+    static onError(cb) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self.client.on('error', (err) => __awaiter(this, void 0, void 0, function* () {
+                    _self.Logger.error(`Producer:onError - ERROR: ${err.stack}`);
+                    (cb) ? resolve(cb(err)) : reject(err);
+                }));
+            });
+        });
+    }
+    static _onReady() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
+                    _self.Logger.log(`Producer:onReady - Ready...`);
+                    resolve();
+                }));
+            });
+        });
+    }
+    static _topicExists(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.topicExists([topic], (err) => {
+                    if (err) {
+                        _self.Logger.log(`Producer:topicExists - Topic Does Not Exist`);
+                        reject(err);
+                    }
+                    else {
+                        _self.Logger.log(`Producer:topicExists - Topic (${topic}) Already Exists`);
+                        resolve();
+                    }
+                });
+            });
+        });
+    }
+    static _createTopics(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            topic = Array.isArray(topic) ? topic : [topic];
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self.client.createTopics(topic, true, (err, data) => {
+                    if (err) {
+                        _self.Logger.error(`Producer:createTopics - ${err.stack}`);
+                        reject(err);
+                    }
+                    else {
+                        _self.Logger.log(`Producer:createTopics - Topics ${JSON.stringify(data)} created`);
+                        resolve();
+                    }
+                });
+            });
+        });
+    }
+    static _refreshMetadata(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.refreshMetadata([topic], (err) => {
+                    if (!err) {
+                        _self.Logger.log(`Producer:refreshMetadata - Successful`);
+                        resolve();
+                    }
+                    else {
+                        _self.Logger.error(`Producer:refreshMetadata - ${err.stack}`);
+                        reject(err);
+                    }
+                });
+            });
+        });
+    }
+    static _send(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            data = Array.isArray(data) ? data : [data];
             if (!this.client) {
                 yield this.init();
             }
             const _self = this;
             yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                const cb = (error, data) => {
+                _self.client.send(data, (error, data) => {
                     if (error) {
                         _self.Logger.error("Producer:send - " + error.stack);
                         reject(error);
@@ -127,18 +190,20 @@ class ServiceProducer {
                         _self.Logger.log(`Producer:send - data sent: ${JSON.stringify(data)}`);
                         resolve();
                     }
-                };
-                _self.client.send(records, cb);
+                });
             }));
         });
     }
-    static close() {
+    static close(cb) {
         if (!this.isConnected)
             return;
         const _self = this;
         this.client.close(() => {
             _self.isConnected = false;
             _self.Logger.log('Producer:close - Closed');
+            if (cb) {
+                cb();
+            }
         });
     }
 }

@@ -25,108 +25,183 @@ export class ServiceConsumer {
 
     static async init(defaultTopic?: string, kHost?: string) {
         if (this.client) return;
-        const _self = this;
+        // const _self = this;
 
-        await new Promise(async (resolve, reject) => {
-            ServiceProducer.Logger = _self.Logger;
-            ServiceProducer.clientIdPrefix = _self.clientIdPrefix;
+        ServiceProducer.Logger = this.Logger;
+        ServiceProducer.clientIdPrefix = this.clientIdPrefix;
 
-            await ServiceProducer.init(defaultTopic)
-                .then(() => {
-                    _self.Logger.log('Init Consumer...');
+        // return new Promise(async (resolve, reject) => {
+        await ServiceProducer.init(defaultTopic, kHost);
+        // .then(() => {
+        this.Logger.log('Init Consumer...');
 
-                    _self._client = new KafkaClient({
-                        kafkaHost: kHost || process.env.KAFKA_HOST,
-                        clientId: `${_self.clientIdPrefix}_${v4()}`
-                    });
-                    _self.client = new Consumer(
-                        _self._client,
-                        [],
-                        {
-                            autoCommit: false,
-                            fromOffset: true
-                        }
-                    );
-
-                    _self._client.on('ready', async () => {
-                        _self.Logger.log(`Consumer:onReady - Ready...`);
-                        if (defaultTopic) await _self.subscribe(defaultTopic);
-                        resolve();
-                    });
-
-                    _self.client.on('error', (err) => {
-                        _self.Logger.error(`Consumer:onError - ERROR: ${err.stack}`);
-                    });
-                });
+        this._client = new KafkaClient({
+            kafkaHost: kHost || process.env.KAFKA_HOST,
+            clientId: `${this.clientIdPrefix}_${v4()}`,
+            requestTimeout: 9999999
         });
+        this.client = new Consumer(
+            this._client,
+            [],
+            {
+                autoCommit: false,
+                fromOffset: true
+            }
+        );
+
+        await this._onReady();
+        if (defaultTopic) await this.subscribe(defaultTopic);
+
+        // resolve();
+        // _self._client.on('ready', async () => {
+        //     _self.Logger.log(`Consumer:onReady - Ready...`);
+        //     if (defaultTopic) await _self.subscribe(defaultTopic);
+        //     resolve();
+        // });
+
+        // _self.client.on('error', async (err) => {
+        //     _self.Logger.error(`Consumer:onError - ERROR: ${err.stack}`);
+        //     reject(err);
+        // });
+        // });
+        // });
     }
 
     static async subscribe(topic: string) {
         if (!this.client) { await this.init(); }
-        const _self = this;
 
-        await new Promise(async (resolve, reject) => {
-            const cb = (err) => {
-                if (!err) {
-                    resolve(_self.addTopic(topic));
-                } else {
-                    ServiceProducer.createTopic(topic)
-                        .then(() => {
-                            resolve(_self.addTopic(topic));
-                        });
-                }
-            }
-            _self._client.topicExists([topic], cb);
-        })
+        try {
+            await this._topicExists(topic);
+        } catch (error) { // topic does not exist
+            await ServiceProducer.createTopic(topic);
+        }
+        await this._addTopic(topic);
+        //start reading topic from where client left off
+        // await _self.addTopic([{ topic: topic, partition: 0, offset: 0 }]);
     }
-
-    private static async addTopic(topic: string) {
-        if (!this.client) { await this.init(); }
-        const _self = this;
-
-        const cb = (err, data) => {
-            if (err) {
-                _self.Logger.error(`Consumer:addTopic - ${err.stack}`);
-            }
-            if (data) _self.Logger.log(`Consumer:addTopic - Topic: ${JSON.stringify(data)} added`);
-        };
-
-        this._client.refreshMetadata([topic], (err) => {
-            if (!err) {
-                //start reading topic from where client left off
-                _self.client.addTopics([{ topic: topic, partition: 0, offset: 0 }], cb);
-            }
-        });
-    }
-
-    // static async commit() {
-    //     if (!this.client) { await this.init(); }
-    //     const _self = this;
-    //     const cb = (err, data) => {
-    //         this.Logger.log('Consumer:commit - Committing...');
-    //         if (err) { this.Logger.log(`Consumer:commit - Error: ${err.stack}`); }
-    //         if (data) {
-    //             this.Logger.log(`Consumer:commit - Data: ${JSON.stringify(data)}`);
-    //             // return (cb1) ? cb1(message) : message;
-    //         }
-    //     };
-    //     this.client.commit(cb);
-    // }
 
     static async listen(cb1?: (message) => any) {
         if (!this.client) { await this.init(); }
+        this.Logger.log('Consumer:listen - listening...')
+        await this._onMessage(cb1);
+        //TODO: handle commits
+        await this._commit();
+        // this.client.on('message', (message) => {
+        //     _self.client.commit((err, data) => {
+        //         _self.Logger.log('Consumer:onMessage - Committing...');
+        //         if (err) { _self.Logger.log(`Consumer:onMessage - Error: ${err.stack}`); }
+        //         if (data) {
+        //             _self.Logger.log(`Consumer:onMessage - Data: ${JSON.stringify(data)}`);
+        //             if (message.hasOwnProperty('value') && message.value) message.value = message.value.toString();
+        //             if (message.hasOwnProperty('key') && message.key) message.key = message.key.toString();
+        //             return ((cb1) ? cb1(message) : message);
+        //         }
+        //     });
+        // });
+    }
+
+    private static async _onMessage(cb?: Function) {
+        if (!this.client) { await this.init(); }
         const _self = this;
-        this.client.on('message', (message) => {
-            this.client.commit((err, data) => {
-                _self.Logger.log('Consumer:onMessage - Committing...');
-                if (err) { _self.Logger.log(`Consumer:onMessage - Error: ${err.stack}`); }
-                if (data) {
-                    _self.Logger.log(`Consumer:onMessage - Data: ${JSON.stringify(data)}`);
+        return new Promise((resolve, reject) => {
+            _self.client.on('message', (message) => {
+                if (message) {
                     if (message.hasOwnProperty('value') && message.value) message.value = message.value.toString();
                     if (message.hasOwnProperty('key') && message.key) message.key = message.key.toString();
-                    return ((cb1) ? cb1(message) : message);
+                    _self.Logger.log(`Consumer:onMessage - Message: ${JSON.stringify(message, null, 2)}`);
+                    (cb) ? resolve(cb(message)) : resolve(message);
                 }
             });
-        });
+        })
+    }
+
+    static async onError(cb?: Function) {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        this.Logger.log('Consumer:onError - listening for errors...')
+        return new Promise((resolve, reject) => {
+            _self.client.on('error', async (err) => {
+                _self.Logger.error(`Consumer:onError - ERROR: ${err.stack}`);
+                (cb) ? resolve(cb(err)) : reject(err);
+            });
+        })
+    }
+
+    private static async _onReady() {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self._client.on('ready', async () => {
+                _self.Logger.log(`Consumer:onReady - Ready...`);
+                resolve();
+            });
+        })
+    }
+
+    private static async _addTopic(topic: any) {
+        topic = Array.isArray(topic) ? topic : [topic];
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self.client.addTopics(topic, (err, data) => {
+                console.log(JSON.stringify(err, null, 2)); //LeaderNotAvailable
+                if (err) {
+                    _self.Logger.error(`Consumer:addTopic - ${err.stack}`);
+                    reject(err);
+                } else { //added
+                    _self.Logger.log(`Consumer:addTopic - Topic: ${JSON.stringify(data)} added`);
+                    resolve();
+                }
+            }, false);
+        })
+    }
+
+    private static async _topicExists(topic: string) {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self._client.topicExists([topic], (err) => {
+                if (err) { //topic does not exist
+                    _self.Logger.log(`Consumer:topicExists - Topic Does Not Exist`);
+                    reject(err);
+                } else { //topic does exist
+                    _self.Logger.log(`Consumer:topicExists - Topic (${topic}) Already Exists`);
+                    resolve();
+                }
+            });
+        })
+    }
+
+    private static async _refreshMetadata(topic: string) {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self._client.refreshMetadata([topic], (err) => {
+                if (!err) {
+                    _self.Logger.log(`Consumer:refreshMetadata - Successful`);
+                    resolve();
+                } else {
+                    _self.Logger.error(`Consumer:refreshMetadata - ${err.stack}`);
+                    reject(err);
+                }
+            });
+        })
+    }
+
+    private static async _commit() {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self.Logger.log('Consumer:commit - Committing...');
+            _self.client.commit((err, data) => {
+                if (!err) {
+                    _self.Logger.log(`Consumer:commit - ${JSON.stringify(data)}`);
+                    resolve();
+                } else {
+                    _self.Logger.error(`Consumer:commit - ${err.stack}`);
+                    reject(err);
+                }
+            });
+        })
     }
 }

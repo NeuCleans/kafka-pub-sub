@@ -33,34 +33,34 @@ export class ServiceConsumerGroup {
             ServiceHLProducer.Logger = _self.Logger;
             ServiceHLProducer.clientIdPrefix = _self.clientIdPrefix;
 
-            await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost)
-                .then(() => {
-                    _self.Logger.log('Init ConsumerGroup...');
+            await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost);
+            // .then(() => {
+            _self.Logger.log('Init ConsumerGroup...');
 
-                    _self._client = new KafkaClient({
-                        kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
-                        clientId: `${_self.clientIdPrefix}_${v4()}`
-                    });
+            _self._client = new KafkaClient({
+                kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
+                clientId: `${_self.clientIdPrefix}_${v4()}`
+            });
 
-                    // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
-                    consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, consumerGroupOpts) : (defaultKafkaConsumerGroupOpts as any);
-                    _self.client = new ConsumerGroup(consumerGroupOpts, ['test']); //topics can't be empty
-                    //subscribe to service topic
-                    _self.client.client = _self._client;
+            // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
+            consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, consumerGroupOpts) : (defaultKafkaConsumerGroupOpts as any);
+            _self.client = new ConsumerGroup(consumerGroupOpts, ['test']); //topics can't be empty
 
-                    _self._client.on('ready', async () => {
-                        // setTimeout(async () => {
-                        _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
-                        await _self.subscribe(defaultTopic);
-                        resolve();
-                        // }, 5 * 1000);
-                    });
+            _self.client.client = _self._client;
 
-                    _self.client.on('error', (err) => {
-                        _self.Logger.error(`ConsumerGroup:onError - ERROR: ${err.stack}`);
-                    });
-                }); //need to make sure Producer creates default topic
-        });
+            _self._client.on('ready', async () => {
+                // setTimeout(async () => {
+                _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
+                await _self.subscribe(defaultTopic);
+                resolve();
+                // }, 5 * 1000);
+            });
+
+            _self.client.on('error', (err) => {
+                _self.Logger.error(`ConsumerGroup:onError - ERROR: ${err.stack}`);
+            });
+        }); //need to make sure Producer creates default topic
+        // });
     }
 
     static async subscribe(topic: string) {
@@ -100,7 +100,7 @@ export class ServiceConsumerGroup {
 
             try {
                 // https://github.com/SOHU-Co/kafka-node/issues/781#issuecomment-336154404
-                await _self.refreshMetadata(topic);
+                // await _self.refreshMetadata(topic);
                 await _self.client.addTopics([topic], cb); // only works w/ string[] not Topic[] and must refreshMetadata
             } catch (error) {
                 if (error.stack.indexOf('LeaderNotAvailable') > -1) {
