@@ -17,59 +17,70 @@ Pub Sub wrapper around [kafka-node](https://github.com/SOHU-Co/kafka-node)
 
 ### Usage
 
-### Producer/Consumer
-
+### Sample
 ```
+const uuidByString = require("uuid-by-string");
 const kafkaPS = require('kafka-pub-sub');
 
-function sampleKafkaPubSub() {
-    const topic = 'SOME_TOPIC';
-    
-    //optional
-    kafkaPS.ServiceConsumer.Logger = new Logger();
-    kafkaPS.ServiceConsumer.clientIdPrefix = "ACC";
+const kHostCluster = 'localhost:32809,localhost:32810,localhost:32811';
+// const kHostCluster = 'localhost:9094,localhost:9096,localhost:9010';
+// const kHostCluster = 'localhost:9092';
 
-    kafkaPS.ServiceConsumer.init(topic)
+function sampleKafkaPubSub() {
+    const topic = uuidByString('jane@doe.com');
+    kafkaPS.ServiceConsumer.init(topic, kHostCluster)
         .then(() => {
             kafkaPS.ServiceConsumer.listen((message) => {
-                console.log(`Message: ${JSON.stringify(message, null, 2)}`);
+                //message is automatically logged
             });
+
+            kafkaPS.ServiceConsumer.onError((error) => {
+                console.log(`!!Error: ${JSON.stringify(error, null, 2)}`);
+            });
+
+            // kafkaPS.ServiceProducer.init(topic, kHostCluster).then(() => {
             setInterval(() => {
                 console.log('sending....');
-                kafkaPS.ServiceProducer.init(topic).then(() => {
-                    kafkaPS.ServiceProducer.buildAMessageObject({ date: `${new Date().toISOString()}` }, topic)
-                        .then((msg) => kafkaPS.ServiceProducer.send([msg]))
-                        .catch(error => console.error(error.stack));
-                })
+                kafkaPS.ServiceProducer.buildAMessageObject({ date: `${new Date().toISOString()}` }, topic)
+                    .then((msg) => kafkaPS.ServiceProducer.send([msg]))
+                    .catch(error => console.error(error.stack));
             }, 5 * 1000);
+            // });
+
         });
 }
-```
 
-### HLProducer/ConsumerGroup
+function sampleKafkaPubSubHL() {
+    const topic = uuidByString('john@doe.com');
+    const topicOpts = {
+        partitions: 10,
+        replicationFactor: 3
+    }
 
-```
-async function sampleKafkaPubSubHL() {
-    const topic = 'SOME_TOPIC_ID'
+    kafkaPS.ServiceConsumerGroup.init(topic, topicOpts, { kafkaHost: kHostCluster })
+        .then(() => {
+            kafkaPS.ServiceConsumerGroup.listen((message) => {
+                //message is automatically logged
+            });
 
-    ServiceConsumerGroup.Logger = new Logger();
-    ServiceConsumerGroup.clientIdPrefix = "ACCT";
-
-    await ServiceConsumerGroup.init(topic); //using defaultKafkaTopicConfig and defaultKafkaConsumerGroupOpts
-    ServiceConsumerGroup.listen((message) => {
-        console.log(`Message: ${JSON.stringify(message, null, 2)}`);
-    });
-
-    setInterval(async () => {
-        console.log('sending....');
-        const msg = await ServiceHLProducer.buildAMessageObject({ date: `${new Date().toISOString()}` }, topic);
-        try {
-            await ServiceHLProducer.send([msg]);
-        } catch (error) {
-            console.error(error.stack);
-        }
-    }, 5 * 1000);
+            kafkaPS.ServiceConsumerGroup.onError((error) => {
+                console.log(`!!Error: ${JSON.stringify(error, null, 2)}`);
+            });
+        })
+        .then(() => {
+            // kafkaPS.ServiceHLProducer.init(topic, topicOpts, kHostCluster).then(() => {
+            setInterval(() => {
+                console.log('sending....');
+                kafkaPS.ServiceHLProducer.buildAMessageObject({ date: `${new Date().toISOString()}` }, topic)
+                    .then((msg) => kafkaPS.ServiceHLProducer.send([msg]))
+                    .catch(error => console.error(error.stack));
+            }, 5 * 1000);
+            // })
+        });
 }
+
+// sampleKafkaPubSub();
+sampleKafkaPubSubHL();
 ```
 
 ## Contributing

@@ -21,8 +21,6 @@ class ServiceProducer {
     }
     static init(defaultTopic, kHost) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (this.client && this.isConnected)
-                return;
             this.Logger.log('Init Producer...');
             this._client = new kafka_node_1.KafkaClient({
                 kafkaHost: kHost || process.env.KAFKA_HOST,
@@ -33,6 +31,7 @@ class ServiceProducer {
                 ackTimeoutMs: 100
             });
             yield this._onReady();
+            this.isConnected = true;
             if (defaultTopic) {
                 yield this.createTopic(defaultTopic);
             }
@@ -179,7 +178,7 @@ class ServiceProducer {
                 yield this.init();
             }
             const _self = this;
-            yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+            return new Promise((resolve, reject) => {
                 _self.client.send(data, (error, data) => {
                     if (error) {
                         _self.Logger.error("Producer:send - " + error.stack);
@@ -191,7 +190,7 @@ class ServiceProducer {
                         resolve();
                     }
                 });
-            }));
+            });
         });
     }
     static close(cb) {

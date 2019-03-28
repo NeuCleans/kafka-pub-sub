@@ -24,10 +24,7 @@ export class ServiceProducer {
     }
 
     static async init(defaultTopic?: string, kHost?: string) {
-        if (this.client && this.isConnected) return;
-
-        // const _self = this;
-        // return new Promise((resolve, reject) => {
+        // if (this.client && this.isConnected) return;
         this.Logger.log('Init Producer...');
 
         this._client = new KafkaClient({
@@ -44,23 +41,10 @@ export class ServiceProducer {
         );
 
         await this._onReady();
+        this.isConnected = true;
         if (defaultTopic) {
             await this.createTopic(defaultTopic);
         }
-        // _self.client.on('ready', async () => {
-        //     _self.Logger.log('Producer:onReady - Ready....');
-        //     _self.isConnected = true;
-        //     if (defaultTopic) {
-        //         await _self.createTopic(defaultTopic);
-        //     }
-        //     resolve();
-        // });
-
-        // _self.client.on('error', async (err) => {
-        //     _self.Logger.error(`Producer:onError - ERROR: ${err.stack}`);
-        //     reject(err);
-        // });
-        // });
     }
 
     static prepareMsgBuffer(data: any, action?: string) {
@@ -70,7 +54,6 @@ export class ServiceProducer {
             data: data
         }
         if (action) jsonData['action'] = action;
-
         // this.Logger.log("jsonData: " + JSON.stringify(jsonData, null, 2));
         return Buffer.from(JSON.stringify(jsonData));
     }
@@ -78,18 +61,14 @@ export class ServiceProducer {
     static async buildAMessageObject(data: any, toTopic: string, fromTopic?: string, action?: string) {
         if (!this.client) { await this.init(); };
         const _self = this;
-        // return new Promise<ProduceRequest>((resolve) => {
         const record = {
             topic: toTopic, //To
             messages: _self.prepareMsgBuffer(data, action),
             partition: 0,
-            // key: fromTopic //From
         }
         if (fromTopic) record['key'] = fromTopic; //From
         // console.log(JSON.stringify(record, null, 2));
         return record as ProduceRequest;
-        // resolve(record);
-        // })
     }
 
     static async createTopic(topic: string) {
@@ -97,7 +76,6 @@ export class ServiceProducer {
         try {
             await this._topicExists(topic);
         } catch (error) {
-            // await this._refreshMetadata(topic);
             await this._createTopics(topic);
         }
     }
@@ -134,7 +112,6 @@ export class ServiceProducer {
         return new Promise((resolve, reject) => {
             _self._client.topicExists([topic], (err) => {
                 if (err) { //topic does not exist
-                    // _self.Logger.error(err.stack);
                     _self.Logger.log(`Producer:topicExists - Topic Does Not Exist`);
                     reject(err);
                 } else { //topic does exist
@@ -150,12 +127,11 @@ export class ServiceProducer {
         if (!this.client) { await this.init(); }
         const _self = this;
         return new Promise((resolve, reject) => {
-            // _self._client.createTopics([{ topic, partitions: 0, replicationFactor: 1 }], cb)
             _self.client.createTopics((topic as string[]), true, (err, data) => {
-                if (err) { //topic does not exist
+                if (err) {
                     _self.Logger.error(`Producer:createTopics - ${err.stack}`);
                     reject(err);
-                } else { //topic does exist
+                } else {
                     _self.Logger.log(`Producer:createTopics - Topics ${JSON.stringify(data)} created`);
                     resolve();
                 }
@@ -191,7 +167,7 @@ export class ServiceProducer {
         data = Array.isArray(data) ? (data as ProduceRequest[]) : [data];
         if (!this.client) { await this.init(); }
         const _self = this;
-        await new Promise<void>(async (resolve, reject) => {
+        return new Promise((resolve, reject) => {
             _self.client.send(data, (error, data) => {
                 if (error) {
                     _self.Logger.error("Producer:send - " + error.stack);

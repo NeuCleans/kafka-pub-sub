@@ -22,40 +22,21 @@ class ServiceHLProducer {
     }
     static init(defaultTopic, defaultTopicOpts, kHost) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (this.client)
-                return;
-            const _self = this;
-            yield new Promise((resolve, reject) => {
-                if (_self.isConnected) {
-                    return resolve();
-                }
-                _self.Logger.log('Init HLProducer...');
-                _self._client = new kafka_node_1.KafkaClient({
-                    kafkaHost: kHost || process.env.KAFKA_HOST,
-                    clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
-                });
-                _self.client = new kafka_node_1.Producer(_self._client, {
-                    requireAcks: 1,
-                    ackTimeoutMs: 100,
-                    partitionerType: 2
-                });
-                _self.client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
-                    _self.Logger.log('HLProducer:onReady - Ready!....');
-                    _self.isConnected = true;
-                    try {
-                        if (defaultTopic)
-                            yield _self.createTopic(defaultTopic, defaultTopicOpts);
-                    }
-                    catch (error) {
-                        if (defaultTopic)
-                            yield _self.createTopic(defaultTopic, defaultTopicOpts);
-                    }
-                    resolve();
-                }));
-                _self.client.on('error', (err) => {
-                    _self.Logger.error(`HLProducer:onError - ERROR: ${err.stack}`);
-                });
+            this.Logger.log('Init HLProducer...');
+            this._client = new kafka_node_1.KafkaClient({
+                kafkaHost: kHost || process.env.KAFKA_HOST,
+                clientId: `${this.clientIdPrefix}_${uuid_1.v4()}`
             });
+            this.client = new kafka_node_1.Producer(this._client, {
+                requireAcks: 1,
+                ackTimeoutMs: 100,
+                partitionerType: 2
+            });
+            yield this._onReady();
+            this.isConnected = true;
+            if (defaultTopic) {
+                yield this.createTopic(defaultTopic, defaultTopicOpts);
+            }
         });
     }
     static prepareMsgBuffer(data, action) {
@@ -66,7 +47,6 @@ class ServiceHLProducer {
         };
         if (action)
             jsonData['action'] = action;
-        this.Logger.log("jsonData: " + JSON.stringify(jsonData, null, 2));
         return Buffer.from(JSON.stringify(jsonData));
     }
     static buildAMessageObject(data, toTopic, fromTopic, action) {
@@ -76,15 +56,13 @@ class ServiceHLProducer {
             }
             ;
             const _self = this;
-            return new Promise((resolve) => {
-                const record = {
-                    topic: toTopic,
-                    messages: _self.prepareMsgBuffer(data, action),
-                };
-                if (fromTopic)
-                    record['key'] = fromTopic;
-                resolve(record);
-            });
+            const record = {
+                topic: toTopic,
+                messages: _self.prepareMsgBuffer(data, action),
+            };
+            if (fromTopic)
+                record['key'] = fromTopic;
+            return record;
         });
     }
     static createTopic(topic, kafkaTopicConfig) {
@@ -92,23 +70,78 @@ class ServiceHLProducer {
             if (!this.client) {
                 yield this.init();
             }
+            try {
+                yield this._topicExists(topic);
+            }
+            catch (error) {
+                kafkaTopicConfig = (kafkaTopicConfig) ?
+                    Object.assign({}, defaultOpts_1.defaultKafkaTopicConfig, kafkaTopicConfig) : defaultOpts_1.defaultKafkaTopicConfig;
+                const topicToCreate = Object.assign({ topic }, kafkaTopicConfig);
+                yield this._createTopics([topicToCreate]);
+            }
+        });
+    }
+    static send(records) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield this._send(records);
+        });
+    }
+    static onError(cb) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
             const _self = this;
-            kafkaTopicConfig = (kafkaTopicConfig) ?
-                Object.assign({}, defaultOpts_1.defaultKafkaTopicConfig, kafkaTopicConfig) : defaultOpts_1.defaultKafkaTopicConfig;
-            const topicToCreate = Object.assign({ topic }, kafkaTopicConfig);
-            const checkTopicCreated = new Promise((resolve, reject) => {
+            return new Promise((resolve, reject) => {
+                _self.client.on('error', (err) => __awaiter(this, void 0, void 0, function* () {
+                    _self.Logger.error(`HLProducer:onError - ERROR: ${err.stack}`);
+                    (cb) ? resolve(cb(err)) : reject(err);
+                }));
+            });
+        });
+    }
+    static _onReady() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
+                    _self.Logger.log(`HLProducer:onReady - Ready...`);
+                    resolve();
+                }));
+            });
+        });
+    }
+    static _topicExists(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
                 _self._client.topicExists([topic], (err) => {
                     if (err) {
-                        _self.Logger.error("HLProducer: Topic (" + topic + ") exists...");
-                        resolve();
+                        _self.Logger.log(`HLProducer:topicExists - Topic Does Not Exist`);
+                        reject(err);
                     }
                     else {
-                        reject();
+                        _self.Logger.log(`HLProducer:topicExists - Topic (${topic}) Already Exists`);
+                        resolve();
                     }
                 });
             });
-            yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                const cb = (error, data) => {
+        });
+    }
+    static _createTopics(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.createTopics(topic, (error, data) => __awaiter(this, void 0, void 0, function* () {
                     if (error) {
                         _self.Logger.error("HLProducer:createTopic - " + error.stack);
                         reject(error);
@@ -117,63 +150,62 @@ class ServiceHLProducer {
                         _self.Logger.log(`HLProducer:createTopic - Topic created: ${JSON.stringify(data)}`);
                         resolve();
                     }
-                };
-                try {
-                    yield checkTopicCreated;
-                    resolve();
-                }
-                catch (error) {
-                    _self._client.createTopics([topicToCreate], cb);
-                }
-            }));
+                }));
+            });
         });
     }
-    static refreshTopic(topic) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
-            const cb = () => { };
-            this._client.refreshMetadata([topic], cb);
-        });
-    }
-    static send(records) {
+    static _refreshMetadata(topic) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
                 yield this.init();
             }
             const _self = this;
-            yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                const cb = (error, data) => {
+            return new Promise((resolve, reject) => {
+                _self._client.refreshMetadata([topic], (err) => {
+                    if (!err) {
+                        _self.Logger.log(`HLProducer:refreshMetadata - Successful`);
+                        resolve();
+                    }
+                    else {
+                        _self.Logger.error(`HLProducer:refreshMetadata - ${err.stack}`);
+                        reject(err);
+                    }
+                });
+            });
+        });
+    }
+    static _send(data) {
+        return __awaiter(this, void 0, void 0, function* () {
+            data = Array.isArray(data) ? data : [data];
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self.client.send(data, (error, data) => {
                     if (error) {
-                        if (error.stack.indexOf('LeaderNotAvailable') > -1 ||
-                            error.stack.indexOf('UnknownTopicOrPartition') > -1) {
-                            _self.Logger.log("HLProducer:send - error...retrying");
-                            _self.Logger.error(error.stack);
-                            resolve(_self.send(records));
-                        }
-                        else {
-                            _self.Logger.error("HLProducer:send - " + error.stack);
-                            reject(error);
-                        }
+                        _self.Logger.error("HLProducer:send - " + error.stack);
+                        reject(error);
                     }
                     ;
                     if (data) {
                         _self.Logger.log(`HLProducer:send - data sent: ${JSON.stringify(data)}`);
                         resolve();
                     }
-                };
-                _self.client.send(records, cb);
-            }));
+                });
+            });
         });
     }
-    static close() {
+    static close(cb) {
         if (!this.isConnected)
             return;
         const _self = this;
         this.client.close(() => {
             _self.isConnected = false;
             _self.Logger.log('HLProducer:close - Closed');
+            if (cb) {
+                cb();
+            }
         });
     }
 }

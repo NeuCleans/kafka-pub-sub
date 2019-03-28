@@ -22,8 +22,6 @@ class ServiceConsumer {
     }
     static init(defaultTopic, kHost) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (this.client)
-                return;
             producer_1.ServiceProducer.Logger = this.Logger;
             producer_1.ServiceProducer.clientIdPrefix = this.clientIdPrefix;
             yield producer_1.ServiceProducer.init(defaultTopic, kHost);
@@ -31,7 +29,6 @@ class ServiceConsumer {
             this._client = new kafka_node_1.KafkaClient({
                 kafkaHost: kHost || process.env.KAFKA_HOST,
                 clientId: `${this.clientIdPrefix}_${uuid_1.v4()}`,
-                requestTimeout: 9999999
             });
             this.client = new kafka_node_1.Consumer(this._client, [], {
                 autoCommit: false,
@@ -54,6 +51,16 @@ class ServiceConsumer {
                 yield producer_1.ServiceProducer.createTopic(topic);
             }
             yield this._addTopic(topic);
+        });
+    }
+    static commit(cb) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            yield this._commit();
+            if (cb)
+                cb();
         });
     }
     static listen(cb1) {
@@ -124,7 +131,6 @@ class ServiceConsumer {
             const _self = this;
             return new Promise((resolve, reject) => {
                 _self.client.addTopics(topic, (err, data) => {
-                    console.log(JSON.stringify(err, null, 2));
                     if (err) {
                         _self.Logger.error(`Consumer:addTopic - ${err.stack}`);
                         reject(err);

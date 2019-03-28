@@ -16,129 +16,187 @@ class ServiceConsumerGroup {
     static getClient() {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
-                throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first");
+                yield this.init();
             }
             return this.client;
         });
     }
-    static init(defaultTopic, defaultTopicOpts, consumerGroupOpts) {
+    static init(defaultTopic = 'test', defaultTopicOpts, consumerGroupOpts) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (this.client)
-                return;
-            const _self = this;
-            yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                hlProducer_1.ServiceHLProducer.Logger = _self.Logger;
-                hlProducer_1.ServiceHLProducer.clientIdPrefix = _self.clientIdPrefix;
-                yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost);
-                _self.Logger.log('Init ConsumerGroup...');
-                _self._client = new kafka_node_1.KafkaClient({
-                    kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
-                    clientId: `${_self.clientIdPrefix}_${uuid_1.v4()}`
-                });
-                consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, consumerGroupOpts) : defaultOpts_1.defaultKafkaConsumerGroupOpts;
-                _self.client = new kafka_node_1.ConsumerGroup(consumerGroupOpts, ['test']);
-                _self.client.client = _self._client;
-                _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
-                    _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
-                    yield _self.subscribe(defaultTopic);
-                    resolve();
-                }));
-                _self.client.on('error', (err) => {
-                    _self.Logger.error(`ConsumerGroup:onError - ERROR: ${err.stack}`);
-                });
-            }));
+            hlProducer_1.ServiceHLProducer.Logger = this.Logger;
+            hlProducer_1.ServiceHLProducer.clientIdPrefix = this.clientIdPrefix;
+            yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost);
+            this.Logger.log('Init ConsumerGroup...');
+            this._client = new kafka_node_1.KafkaClient({
+                kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
+                clientId: `${this.clientIdPrefix}_${uuid_1.v4()}`
+            });
+            consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, consumerGroupOpts) : defaultOpts_1.defaultKafkaConsumerGroupOpts;
+            this.client = new kafka_node_1.ConsumerGroup(consumerGroupOpts, [defaultTopic]);
+            this.client.client = this._client;
+            yield this._onReady();
         });
     }
     static subscribe(topic) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
-                throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first");
+                yield this.init();
             }
-            const _self = this;
-            yield new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                const cb = (err) => __awaiter(this, void 0, void 0, function* () {
-                    if (err) {
-                        yield _self.addTopic(topic);
-                        resolve();
-                    }
-                    else {
-                        yield hlProducer_1.ServiceHLProducer.createTopic(topic);
-                        yield _self.addTopic(topic);
-                        resolve();
-                    }
-                });
-                _self._client.topicExists([topic], cb);
-            }));
+            try {
+                yield this._topicExists(topic);
+            }
+            catch (error) {
+                yield hlProducer_1.ServiceHLProducer.createTopic(topic);
+            }
+            yield this._addTopic(topic);
         });
     }
-    static addTopic(topic) {
+    static commit(cb) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
-                throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first");
+                yield this.init();
             }
-            const _self = this;
-            return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                const cb = (err, data) => {
-                    if (err) {
-                        _self.Logger.error(`ConsumerGroup:addTopic - ${err.stack}`);
-                        reject(err);
-                    }
-                    if (data) {
-                        _self.Logger.log(`ConsumerGroup:addTopic - Topic: ${JSON.stringify(data)} added`);
-                        resolve();
-                    }
-                };
-                try {
-                    yield _self.client.addTopics([topic], cb);
-                }
-                catch (error) {
-                    if (error.stack.indexOf('LeaderNotAvailable') > -1) {
-                        _self.Logger.log("ConsumerGroup:refreshMetadata - LeaderNotAvailable...Retrying...");
-                        yield _self.addTopic(topic);
-                    }
-                    else {
-                        _self.Logger.error("ConsumerGroup:refreshMetadata - " + error.stack);
-                        _self.Logger.error("ConsumerGroup:addTopics - TOPIC NOT ADDED: " + topic);
-                    }
-                }
-            }));
-        });
-    }
-    static refreshMetadata(topic) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first");
-            }
-            const _self = this;
-            return new Promise((resolve, reject) => {
-                _self._client.refreshMetadata([topic], (err) => __awaiter(this, void 0, void 0, function* () {
-                    if (err)
-                        reject(err);
-                    if (!err)
-                        resolve();
-                }));
-            });
+            yield this._commit();
+            if (cb)
+                cb();
         });
     }
     static listen(cb1) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
-                throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first");
+                yield this.init();
+            }
+            this.Logger.log('ConsumerGroup:listen - listening...');
+            yield this._onMessage(cb1);
+            yield this._commit();
+        });
+    }
+    static _onMessage(cb) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
             }
             const _self = this;
-            this.client.on('message', (message) => {
-                this.client.commit((err, data) => {
-                    _self.Logger.log('ConsumerGroup:onMessage - Committing...');
-                    if (err) {
-                        _self.Logger.log(`ConsumerGroup:onMessage - Error: ${err.stack}`);
-                    }
-                    if (data) {
-                        _self.Logger.log(`ConsumerGroup:onMessage - Data: ${JSON.stringify(data)}`);
+            return new Promise((resolve, reject) => {
+                _self.client.on('message', (message) => {
+                    if (message) {
                         if (message.hasOwnProperty('value') && message.value)
                             message.value = message.value.toString();
                         if (message.hasOwnProperty('key') && message.key)
                             message.key = message.key.toString();
-                        return ((cb1) ? cb1(message) : message);
+                        _self.Logger.log(`ConsumerGroup:onMessage - Message: ${JSON.stringify(message, null, 2)}`);
+                        (cb) ? resolve(cb(message)) : resolve(message);
+                    }
+                });
+            });
+        });
+    }
+    static onError(cb) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            this.Logger.log('ConsumerGroup:onError - listening for errors...');
+            return new Promise((resolve, reject) => {
+                _self.client.on('error', (err) => __awaiter(this, void 0, void 0, function* () {
+                    _self.Logger.error(`ConsumerGroup:onError - ERROR: ${err.stack}`);
+                    (cb) ? resolve(cb(err)) : reject(err);
+                }));
+            });
+        });
+    }
+    static _onReady() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
+                    _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
+                    resolve();
+                }));
+            });
+        });
+    }
+    static _addTopic(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            topic = Array.isArray(topic) ? topic : [topic];
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self.client.addTopics(topic, (err, data) => {
+                    if (err) {
+                        _self.Logger.error(`ConsumerGroup:addTopic - ${err.stack}`);
+                        reject(err);
+                    }
+                    else {
+                        _self.Logger.log(`ConsumerGroup:addTopic - Topic: ${JSON.stringify(data)} added`);
+                        resolve();
+                    }
+                });
+            });
+        });
+    }
+    static _topicExists(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.topicExists([topic], (err) => {
+                    if (err) {
+                        _self.Logger.log(`ConsumerGroup:topicExists - Topic Does Not Exist`);
+                        reject(err);
+                    }
+                    else {
+                        _self.Logger.log(`ConsumerGroup:topicExists - Topic (${topic}) Already Exists`);
+                        resolve();
+                    }
+                });
+            });
+        });
+    }
+    static _refreshMetadata(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self._client.refreshMetadata([topic], (err) => {
+                    if (!err) {
+                        _self.Logger.log(`ConsumerGroup:refreshMetadata - Successful`);
+                        resolve();
+                    }
+                    else {
+                        _self.Logger.error(`ConsumerGroup:refreshMetadata - ${err.stack}`);
+                        reject(err);
+                    }
+                });
+            });
+        });
+    }
+    static _commit() {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                _self.Logger.log('ConsumerGroup:commit - Committing...');
+                _self.client.commit((err, data) => {
+                    if (!err) {
+                        _self.Logger.log(`ConsumerGroup:commit - ${JSON.stringify(data)}`);
+                        resolve();
+                    }
+                    else {
+                        _self.Logger.error(`ConsumerGroup:commit - ${err.stack}`);
+                        reject(err);
                     }
                 });
             });

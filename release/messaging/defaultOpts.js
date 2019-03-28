@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const defaultKafkaTopicConfig = {
-    partitions: 10,
-    replicationFactor: 3,
+    partitions: 1,
+    replicationFactor: 1,
     configEntries: [
         {
             name: 'compression.type',

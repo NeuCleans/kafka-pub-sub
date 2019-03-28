@@ -21,139 +21,160 @@ export class ServiceConsumerGroup {
     private static _client: KafkaClient;
 
     static async getClient() {
-        if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
+        if (!this.client) { await this.init(); }
         return this.client;
     }
 
-    static async init(defaultTopic: string, defaultTopicOpts?: KafkaTopicConfig, consumerGroupOpts?: ConsumerGroupOptions) {
-        if (this.client) return;
-        const _self = this;
+    static async init(defaultTopic: string = 'test', defaultTopicOpts?: KafkaTopicConfig, consumerGroupOpts?: ConsumerGroupOptions) {
+        // if (this.client) return;
 
-        await new Promise<void>(async (resolve, reject) => {
-            ServiceHLProducer.Logger = _self.Logger;
-            ServiceHLProducer.clientIdPrefix = _self.clientIdPrefix;
+        ServiceHLProducer.Logger = this.Logger;
+        ServiceHLProducer.clientIdPrefix = this.clientIdPrefix;
 
-            await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost);
-            // .then(() => {
-            _self.Logger.log('Init ConsumerGroup...');
+        await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost);
 
-            _self._client = new KafkaClient({
-                kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
-                clientId: `${_self.clientIdPrefix}_${v4()}`
-            });
+        this.Logger.log('Init ConsumerGroup...');
 
-            // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
-            consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, consumerGroupOpts) : (defaultKafkaConsumerGroupOpts as any);
-            _self.client = new ConsumerGroup(consumerGroupOpts, ['test']); //topics can't be empty
+        this._client = new KafkaClient({
+            kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
+            clientId: `${this.clientIdPrefix}_${v4()}`
+        });
 
-            _self.client.client = _self._client;
+        // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
+        consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultKafkaConsumerGroupOpts, consumerGroupOpts) : (defaultKafkaConsumerGroupOpts as any);
+        this.client = new ConsumerGroup(consumerGroupOpts, [defaultTopic]); //topics can't be empty
 
-            _self._client.on('ready', async () => {
-                // setTimeout(async () => {
-                _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
-                await _self.subscribe(defaultTopic);
-                resolve();
-                // }, 5 * 1000);
-            });
+        this.client.client = this._client;
 
-            _self.client.on('error', (err) => {
-                _self.Logger.error(`ConsumerGroup:onError - ERROR: ${err.stack}`);
-            });
-        }); //need to make sure Producer creates default topic
-        // });
+        await this._onReady();
+        // if (defaultTopic) await this.subscribe(defaultTopic);
     }
 
     static async subscribe(topic: string) {
-        if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
-        const _self = this;
+        if (!this.client) { await this.init(); }
+        try {
+            await this._topicExists(topic);
+        } catch (error) { // topic does not exist
+            await ServiceHLProducer.createTopic(topic);
+        }
+        await this._addTopic(topic);
+    }
 
-        await new Promise(async (resolve, reject) => {
-            const cb = async (err) => {
-                if (err) { //topic already exists
-                    await _self.addTopic(topic);
-                    resolve()
-                } else {
-                    await ServiceHLProducer.createTopic(topic);
-                    await _self.addTopic(topic)
-                    resolve();
+    static async commit(cb?: Function) {
+        if (!this.client) { await this.init(); }
+        await this._commit();
+        if (cb) cb();
+    }
+
+    static async listen(cb1?: (message) => any) {
+        if (!this.client) { await this.init(); }
+        this.Logger.log('ConsumerGroup:listen - listening...')
+        await this._onMessage(cb1);
+        //TODO: handle commits
+        await this._commit();
+    }
+
+    private static async _onMessage(cb?: Function) {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self.client.on('message', (message) => {
+                if (message) {
+                    if (message.hasOwnProperty('value') && message.value) message.value = message.value.toString();
+                    if (message.hasOwnProperty('key') && message.key) message.key = message.key.toString();
+                    _self.Logger.log(`ConsumerGroup:onMessage - Message: ${JSON.stringify(message, null, 2)}`);
+                    (cb) ? resolve(cb(message)) : resolve(message);
                 }
-            }
-            _self._client.topicExists([topic], cb);
+            });
         })
     }
 
-    private static async addTopic(topic: string) {
-        if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
+    static async onError(cb?: Function) {
+        if (!this.client) { await this.init(); }
         const _self = this;
+        this.Logger.log('ConsumerGroup:onError - listening for errors...')
+        return new Promise((resolve, reject) => {
+            _self.client.on('error', async (err) => {
+                _self.Logger.error(`ConsumerGroup:onError - ERROR: ${err.stack}`);
+                (cb) ? resolve(cb(err)) : reject(err);
+            });
+        })
+    }
 
-        return new Promise(async (resolve, reject) => {
-            const cb = (err, data) => {
+    private static async _onReady() {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self._client.on('ready', async () => {
+                _self.Logger.log(`ConsumerGroup:onReady - Ready...`);
+                resolve();
+            });
+        })
+    }
+
+    private static async _addTopic(topic: any) {
+        topic = Array.isArray(topic) ? topic : [topic];
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self.client.addTopics(topic, (err, data) => {
                 if (err) {
                     _self.Logger.error(`ConsumerGroup:addTopic - ${err.stack}`);
                     reject(err);
-                }
-                if (data) {
+                } else { //added
                     _self.Logger.log(`ConsumerGroup:addTopic - Topic: ${JSON.stringify(data)} added`);
                     resolve();
                 }
-            };
-
-            try {
-                // https://github.com/SOHU-Co/kafka-node/issues/781#issuecomment-336154404
-                // await _self.refreshMetadata(topic);
-                await _self.client.addTopics([topic], cb); // only works w/ string[] not Topic[] and must refreshMetadata
-            } catch (error) {
-                if (error.stack.indexOf('LeaderNotAvailable') > -1) {
-                    _self.Logger.log("ConsumerGroup:refreshMetadata - LeaderNotAvailable...Retrying...");
-                    await _self.addTopic(topic);
-                } else {
-                    _self.Logger.error("ConsumerGroup:refreshMetadata - " + error.stack);
-                    _self.Logger.error("ConsumerGroup:addTopics - TOPIC NOT ADDED: " + topic)
-                }
-            }
+            });
         })
     }
 
-    static async refreshMetadata(topic: string) {
-        if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
+    private static async _topicExists(topic: string) {
+        if (!this.client) { await this.init(); }
         const _self = this;
-
         return new Promise((resolve, reject) => {
-            _self._client.refreshMetadata([topic], async (err) => {
-                if (err) reject(err);
-                if (!err) resolve();
-            });
-        });
-    }
-
-    // static async commit() {
-    //     if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
-    //     const _self = this;
-    //     const cb = (err, data) => {
-    //         this.Logger.log('ConsumerGroup:commit - Committing...');
-    //         if (err) { this.Logger.log(`ConsumerGroup:commit - Error: ${err.stack}`); }
-    //         if (data) {
-    //             this.Logger.log(`ConsumerGroup:commit - Data: ${JSON.stringify(data)}`);
-    //             // return (cb1) ? cb1(message) : message;
-    //         }
-    //     };
-    //     this.client.commit(cb);
-    // }
-
-    static async listen(cb1?: (message) => any) {
-        if (!this.client) { throw new Error("ConsumerGroup client not initialized. Please call init(<topic>) first") }
-        const _self = this;
-        this.client.on('message', (message) => {
-            this.client.commit((err, data) => {
-                _self.Logger.log('ConsumerGroup:onMessage - Committing...');
-                if (err) { _self.Logger.log(`ConsumerGroup:onMessage - Error: ${err.stack}`); }
-                if (data) {
-                    _self.Logger.log(`ConsumerGroup:onMessage - Data: ${JSON.stringify(data)}`);
-                    if (message.hasOwnProperty('value') && message.value) message.value = message.value.toString();
-                    if (message.hasOwnProperty('key') && message.key) message.key = message.key.toString();
-                    return ((cb1) ? cb1(message) : message);
+            _self._client.topicExists([topic], (err) => {
+                if (err) { //topic does not exist
+                    _self.Logger.log(`ConsumerGroup:topicExists - Topic Does Not Exist`);
+                    reject(err);
+                } else { //topic does exist
+                    _self.Logger.log(`ConsumerGroup:topicExists - Topic (${topic}) Already Exists`);
+                    resolve();
                 }
             });
-        });
+        })
+    }
+
+    private static async _refreshMetadata(topic: string) {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self._client.refreshMetadata([topic], (err) => {
+                if (!err) {
+                    _self.Logger.log(`ConsumerGroup:refreshMetadata - Successful`);
+                    resolve();
+                } else {
+                    _self.Logger.error(`ConsumerGroup:refreshMetadata - ${err.stack}`);
+                    reject(err);
+                }
+            });
+        })
+    }
+
+    private static async _commit() {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise((resolve, reject) => {
+            _self.Logger.log('ConsumerGroup:commit - Committing...');
+            _self.client.commit((err, data) => {
+                if (!err) {
+                    _self.Logger.log(`ConsumerGroup:commit - ${JSON.stringify(data)}`);
+                    resolve();
+                } else {
+                    _self.Logger.error(`ConsumerGroup:commit - ${err.stack}`);
+                    reject(err);
+                }
+            });
+        })
     }
 }

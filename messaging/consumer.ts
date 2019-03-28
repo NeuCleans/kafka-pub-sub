@@ -24,21 +24,18 @@ export class ServiceConsumer {
     }
 
     static async init(defaultTopic?: string, kHost?: string) {
-        if (this.client) return;
-        // const _self = this;
+        // if (this.client) return;
 
         ServiceProducer.Logger = this.Logger;
         ServiceProducer.clientIdPrefix = this.clientIdPrefix;
 
-        // return new Promise(async (resolve, reject) => {
         await ServiceProducer.init(defaultTopic, kHost);
-        // .then(() => {
         this.Logger.log('Init Consumer...');
 
         this._client = new KafkaClient({
             kafkaHost: kHost || process.env.KAFKA_HOST,
             clientId: `${this.clientIdPrefix}_${v4()}`,
-            requestTimeout: 9999999
+            // requestTimeout: 9999999
         });
         this.client = new Consumer(
             this._client,
@@ -51,20 +48,6 @@ export class ServiceConsumer {
 
         await this._onReady();
         if (defaultTopic) await this.subscribe(defaultTopic);
-
-        // resolve();
-        // _self._client.on('ready', async () => {
-        //     _self.Logger.log(`Consumer:onReady - Ready...`);
-        //     if (defaultTopic) await _self.subscribe(defaultTopic);
-        //     resolve();
-        // });
-
-        // _self.client.on('error', async (err) => {
-        //     _self.Logger.error(`Consumer:onError - ERROR: ${err.stack}`);
-        //     reject(err);
-        // });
-        // });
-        // });
     }
 
     static async subscribe(topic: string) {
@@ -80,24 +63,18 @@ export class ServiceConsumer {
         // await _self.addTopic([{ topic: topic, partition: 0, offset: 0 }]);
     }
 
+    static async commit(cb?: Function) {
+        if (!this.client) { await this.init(); }
+        await this._commit();
+        if (cb) cb();
+    }
+
     static async listen(cb1?: (message) => any) {
         if (!this.client) { await this.init(); }
         this.Logger.log('Consumer:listen - listening...')
         await this._onMessage(cb1);
         //TODO: handle commits
         await this._commit();
-        // this.client.on('message', (message) => {
-        //     _self.client.commit((err, data) => {
-        //         _self.Logger.log('Consumer:onMessage - Committing...');
-        //         if (err) { _self.Logger.log(`Consumer:onMessage - Error: ${err.stack}`); }
-        //         if (data) {
-        //             _self.Logger.log(`Consumer:onMessage - Data: ${JSON.stringify(data)}`);
-        //             if (message.hasOwnProperty('value') && message.value) message.value = message.value.toString();
-        //             if (message.hasOwnProperty('key') && message.key) message.key = message.key.toString();
-        //             return ((cb1) ? cb1(message) : message);
-        //         }
-        //     });
-        // });
     }
 
     private static async _onMessage(cb?: Function) {
@@ -144,7 +121,6 @@ export class ServiceConsumer {
         const _self = this;
         return new Promise((resolve, reject) => {
             _self.client.addTopics(topic, (err, data) => {
-                console.log(JSON.stringify(err, null, 2)); //LeaderNotAvailable
                 if (err) {
                     _self.Logger.error(`Consumer:addTopic - ${err.stack}`);
                     reject(err);

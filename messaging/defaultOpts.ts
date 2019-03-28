@@ -1,7 +1,7 @@
 const defaultKafkaTopicConfig = {
     // https://github.com/SOHU-Co/kafka-node/blob/42d61e943751238b38789cb4fe1ef5d0865c63aa/README.md#createtopicstopics-cb
-    partitions: 10,
-    replicationFactor: 3,
+    partitions: 1,
+    replicationFactor: 1,
     configEntries: [
         {
             name: 'compression.type',
