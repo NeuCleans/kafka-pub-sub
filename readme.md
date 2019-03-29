@@ -10,14 +10,17 @@ Pub Sub wrapper around [kafka-node](https://github.com/SOHU-Co/kafka-node)
 
 * [kafka](https://github.com/NeuCleans/kafka-docker/tree/pub-sub)
 
-### Setup
+### Installing
 
 `yarn add https://github.com/NeuCleans/kafka-pub-sub.git`
 
 
 ### Usage
 
-### Sample
+* [Sample project using this lib](https://github.com/User1m/socketio-kafka-pubsub-sample)
+
+
+#### Sample
 
 ```
 const uuidByString = require("uuid-by-string");
