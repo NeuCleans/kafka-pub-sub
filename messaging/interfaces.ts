@@ -10,3 +10,8 @@ export interface KafkaTopicConfig {
         replicas: number[];
     }[];
 }
+
+export interface Logger {
+    log: Function,
+    error: Function
+}

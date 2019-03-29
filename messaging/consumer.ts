@@ -5,16 +5,10 @@
 import { KafkaClient, Consumer } from 'kafka-node';
 import { ServiceProducer } from './producer';
 import { v4 } from "uuid";
+import { Logger } from './interfaces';
 
 export class ServiceConsumer {
-    //  ----- can set theses -----
-    static Logger: { log: Function, error: Function } = {
-        log: (data) => { console.log(data) },
-        error: (error) => { console.error(error) }
-    };
-    static clientIdPrefix: string = "SAMPLE";
-    //  ----- can set theses -----
-
+    private static Logger: Logger;
     private static client: Consumer;
     private static _client: KafkaClient;
 
@@ -23,18 +17,22 @@ export class ServiceConsumer {
         return this.client;
     }
 
-    static async init(defaultTopic?: string, kHost?: string) {
-        // if (this.client) return;
+    static async init(defaultTopic?: string, kHost?: string, clientIdPrefix?: string, logger?: Logger) {
 
-        ServiceProducer.Logger = this.Logger;
-        ServiceProducer.clientIdPrefix = this.clientIdPrefix;
+        this.Logger = (logger) ? logger : {
+            log: (data) => { console.log(data) },
+            error: (error) => { console.error(error) }
+        };
 
-        await ServiceProducer.init(defaultTopic, kHost);
+        clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
+
+        await ServiceProducer.init(defaultTopic, kHost, clientIdPrefix, logger);
+
         this.Logger.log('Init Consumer...');
 
         this._client = new KafkaClient({
             kafkaHost: kHost || process.env.KAFKA_HOST,
-            clientId: `${this.clientIdPrefix}_${v4()}`,
+            clientId: `${clientIdPrefix}_${v4()}`,
             // requestTimeout: 9999999
         });
         this.client = new Consumer(

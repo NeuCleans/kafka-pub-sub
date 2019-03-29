@@ -4,16 +4,10 @@
 // https://github.com/theotow/nodejs-kafka-example
 import { KafkaClient, Producer, ProduceRequest, CreateTopicRequest } from "kafka-node";
 import { v4 } from "uuid";
+import { Logger } from "./interfaces";
 
 export class ServiceProducer {
-    //  ----- can set theses -----
-    static Logger: { log: Function, error: Function } = {
-        log: (data) => { console.log(data) },
-        error: (error) => { console.error(error) }
-    };
-    static clientIdPrefix: string = "SAMPLE";
-    //  ----- can set theses -----
-
+    private static Logger: Logger;
     private static client: Producer;
     private static _client: KafkaClient;
     static isConnected = false;
@@ -23,13 +17,20 @@ export class ServiceProducer {
         return this.client;
     }
 
-    static async init(defaultTopic?: string, kHost?: string) {
-        // if (this.client && this.isConnected) return;
+    static async init(defaultTopic?: string, kHost?: string, clientIdPrefix?: string, logger?: Logger) {
+
+        this.Logger = (logger) ? logger : {
+            log: (data) => { console.log(data) },
+            error: (error) => { console.error(error) }
+        };
+
+        clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
+
         this.Logger.log('Init Producer...');
 
         this._client = new KafkaClient({
             kafkaHost: kHost || process.env.KAFKA_HOST,
-            clientId: `${this.clientIdPrefix}_${v4()}`
+            clientId: `${clientIdPrefix}_${v4()}`
         });
 
         this.client = new Producer(

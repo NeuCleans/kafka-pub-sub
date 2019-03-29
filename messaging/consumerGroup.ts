@@ -6,17 +6,10 @@ import { KafkaClient, ConsumerGroup, ConsumerGroupOptions } from 'kafka-node';
 import { v4 } from "uuid";
 import { ServiceHLProducer } from './hlProducer';
 import { defaultKafkaConsumerGroupOpts } from './defaultOpts';
-import { KafkaTopicConfig } from './interfaces';
+import { KafkaTopicConfig, Logger } from './interfaces';
 
 export class ServiceConsumerGroup {
-    //  ----- can set theses -----
-    static Logger: { log: Function, error: Function } = {
-        log: (data) => { console.log(data) },
-        error: (error) => { console.error(error) }
-    };
-    static clientIdPrefix: string = "SAMPLE";
-    //  ----- can set theses -----
-
+    private static Logger: Logger;
     private static client: ConsumerGroup;
     private static _client: KafkaClient;
 
@@ -25,18 +18,23 @@ export class ServiceConsumerGroup {
         return this.client;
     }
 
-    static async init(defaultTopic: string = 'test', defaultTopicOpts?: KafkaTopicConfig, consumerGroupOpts?: ConsumerGroupOptions) {
-        // if (this.client) return;
+    static async init(defaultTopic: string = 'test', defaultTopicOpts?: KafkaTopicConfig,
+        consumerGroupOpts?: ConsumerGroupOptions, clientIdPrefix?: string, logger?: Logger) {
 
-        ServiceHLProducer.Logger = this.Logger;
-        ServiceHLProducer.clientIdPrefix = this.clientIdPrefix;
+        this.Logger = (logger) ? logger : {
+            log: (data) => { console.log(data) },
+            error: (error) => { console.error(error) }
+        };
 
-        await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost);
+        clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
+
+        await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost, clientIdPrefix, logger);
+
         this.Logger.log('Init ConsumerGroup...');
 
         this._client = new KafkaClient({
             kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
-            clientId: `${this.clientIdPrefix}_${v4()}`
+            clientId: `${clientIdPrefix}_${v4()}`
         });
 
         // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics
