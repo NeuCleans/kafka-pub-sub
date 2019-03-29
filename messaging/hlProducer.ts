@@ -21,6 +21,8 @@ export class ServiceHLProducer {
     static async init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig,
         kHost?: string, clientIdPrefix?: string, logger?: Logger) {
 
+        if (this.client) return;
+
         this.Logger = (logger) ? logger : {
             log: (data) => { console.log(data) },
             error: (error) => { console.error(error) }

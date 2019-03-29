@@ -20,15 +20,20 @@ class ServiceConsumer {
             return this.client;
         });
     }
-    static init(defaultTopic, kHost) {
+    static init(defaultTopic, kHost, clientIdPrefix, logger) {
         return __awaiter(this, void 0, void 0, function* () {
-            producer_1.ServiceProducer.Logger = this.Logger;
-            producer_1.ServiceProducer.clientIdPrefix = this.clientIdPrefix;
-            yield producer_1.ServiceProducer.init(defaultTopic, kHost);
+            if (this.client)
+                return;
+            this.Logger = (logger) ? logger : {
+                log: (data) => { console.log(data); },
+                error: (error) => { console.error(error); }
+            };
+            clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
+            yield producer_1.ServiceProducer.init(defaultTopic, kHost, clientIdPrefix, logger);
             this.Logger.log('Init Consumer...');
             this._client = new kafka_node_1.KafkaClient({
                 kafkaHost: kHost || process.env.KAFKA_HOST,
-                clientId: `${this.clientIdPrefix}_${uuid_1.v4()}`,
+                clientId: `${clientIdPrefix}_${uuid_1.v4()}`,
             });
             this.client = new kafka_node_1.Consumer(this._client, [], {
                 autoCommit: false,
@@ -205,10 +210,5 @@ class ServiceConsumer {
         });
     }
 }
-ServiceConsumer.Logger = {
-    log: (data) => { console.log(data); },
-    error: (error) => { console.error(error); }
-};
-ServiceConsumer.clientIdPrefix = "SAMPLE";
 exports.ServiceConsumer = ServiceConsumer;
 //# sourceMappingURL=consumer.js.map

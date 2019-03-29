@@ -21,6 +21,8 @@ export class ServiceConsumerGroup {
     static async init(defaultTopic: string = 'test', defaultTopicOpts?: KafkaTopicConfig,
         consumerGroupOpts?: ConsumerGroupOptions, clientIdPrefix?: string, logger?: Logger) {
 
+        if (this.client) return;
+
         this.Logger = (logger) ? logger : {
             log: (data) => { console.log(data) },
             error: (error) => { console.error(error) }
