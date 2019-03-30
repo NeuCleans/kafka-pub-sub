@@ -21,7 +21,7 @@ class ServiceConsumerGroup {
             return this.client;
         });
     }
-    static init(defaultTopic = 'test', defaultTopicOpts, consumerGroupOpts, clientIdPrefix, logger) {
+    static init(defaultTopic = 'test', defaultTopicOpts, consumerGroupOpts, clientIdPrefix, logger, createHLProducer = true) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.client)
                 return;
@@ -30,7 +30,9 @@ class ServiceConsumerGroup {
                 error: (error) => { console.error(error); }
             };
             clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
-            yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost, clientIdPrefix, logger);
+            if (createHLProducer) {
+                yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost, clientIdPrefix, logger);
+            }
             this.Logger.log('Init ConsumerGroup...');
             this._client = new kafka_node_1.KafkaClient({
                 kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
