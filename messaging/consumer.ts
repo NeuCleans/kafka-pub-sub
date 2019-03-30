@@ -17,7 +17,7 @@ export class ServiceConsumer {
         return this.client;
     }
 
-    static async init(defaultTopic?: string, kHost?: string, clientIdPrefix?: string, logger?: Logger, createProducer: boolean = true) {
+    static async init(defaultTopic?: string, kHost?: string, clientIdPrefix?: string, logger?: Logger) {
 
         if (this.client) return;
 
@@ -28,9 +28,7 @@ export class ServiceConsumer {
 
         clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
 
-        if (createProducer) {
-            await ServiceProducer.init(defaultTopic, kHost, clientIdPrefix, logger);
-        }
+        await ServiceProducer.init(defaultTopic, kHost, clientIdPrefix, logger);
 
         this.Logger.log('Init Consumer...');
 
