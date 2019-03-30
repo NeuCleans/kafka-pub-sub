@@ -19,7 +19,7 @@ export class ServiceConsumerGroup {
     }
 
     static async init(defaultTopic: string = 'test', defaultTopicOpts?: KafkaTopicConfig,
-        consumerGroupOpts?: ConsumerGroupOptions, clientIdPrefix?: string, logger?: Logger) {
+        consumerGroupOpts?: ConsumerGroupOptions, clientIdPrefix?: string, logger?: Logger, createHLProducer: boolean = true) {
 
         if (this.client) return;
 
@@ -30,7 +30,9 @@ export class ServiceConsumerGroup {
 
         clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
 
-        await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost, clientIdPrefix, logger);
+        if (createHLProducer) {
+            await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost, clientIdPrefix, logger);
+        }
 
         this.Logger.log('Init ConsumerGroup...');
 
