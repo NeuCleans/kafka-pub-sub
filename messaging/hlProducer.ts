@@ -53,23 +53,24 @@ export class ServiceHLProducer {
         }
     }
 
-    static prepareMsgBuffer(data: any, action?: string) {
+    static prepareMsgBuffer(data: any, action?: string, opts?: Object) {
         let jsonData = {
             $ref: v4(),
             timestamp: Date.now(),
-            data: data
+            data
         }
         if (action) jsonData['action'] = action;
+        if (opts) jsonData['opts'] = opts;
         // this.Logger.log("jsonData: " + JSON.stringify(jsonData, null, 2));
         return Buffer.from(JSON.stringify(jsonData));
     }
 
-    static async buildAMessageObject(data: any, toTopic: string, fromTopic?: string, action?: string) {
+    static async buildAMessageObject(data: any, toTopic: string, fromTopic?: string, action?: string, opts?: Object) {
         if (!this.client) { await this.init(); };
-        const _self = this;
+        // const _self = this;
         const record = {
             topic: toTopic, //To
-            messages: _self.prepareMsgBuffer(data, action),
+            messages: this.prepareMsgBuffer(data, action, opts),
         }
         if (fromTopic) record['key'] = fromTopic; //From
         // console.log(JSON.stringify(record, null, 2));

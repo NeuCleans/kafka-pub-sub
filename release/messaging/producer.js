@@ -44,26 +44,27 @@ class ServiceProducer {
             }
         });
     }
-    static prepareMsgBuffer(data, action) {
+    static prepareMsgBuffer(data, action, opts) {
         let jsonData = {
             $ref: uuid_1.v4(),
             timestamp: Date.now(),
-            data: data
+            data
         };
         if (action)
             jsonData['action'] = action;
+        if (opts)
+            jsonData['opts'] = opts;
         return Buffer.from(JSON.stringify(jsonData));
     }
-    static buildAMessageObject(data, toTopic, fromTopic, action) {
+    static buildAMessageObject(data, toTopic, fromTopic, action, opts) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
                 yield this.init();
             }
             ;
-            const _self = this;
             const record = {
                 topic: toTopic,
-                messages: _self.prepareMsgBuffer(data, action),
+                messages: this.prepareMsgBuffer(data, action, opts),
                 partition: 0,
             };
             if (fromTopic)

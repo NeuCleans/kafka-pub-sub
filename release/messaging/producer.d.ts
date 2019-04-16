@@ -8,8 +8,8 @@ export declare class ServiceProducer {
     static isConnected: boolean;
     static getClient(): Promise<Producer>;
     static init(defaultTopic?: string, kHost?: string, clientIdPrefix?: string, logger?: Logger): Promise<void>;
-    static prepareMsgBuffer(data: any, action?: string): Buffer;
-    static buildAMessageObject(data: any, toTopic: string, fromTopic?: string, action?: string): Promise<ProduceRequest>;
+    static prepareMsgBuffer(data: any, action?: string, opts?: Object): Buffer;
+    static buildAMessageObject(data: any, toTopic: string, fromTopic?: string, action?: string, opts?: Object): Promise<ProduceRequest>;
     static createTopic(topic: string): Promise<void>;
     static send(records: ProduceRequest | ProduceRequest[]): Promise<void>;
     static onError(cb?: Function): Promise<{}>;
