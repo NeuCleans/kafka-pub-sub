@@ -135,7 +135,7 @@ export class ServiceConsumer {
                     _self.Logger.log(`Consumer:addTopic - Topic: ${JSON.stringify(data)} added`);
                     resolve();
                 }
-            }, false);
+            }, true);
         })
     }
 
