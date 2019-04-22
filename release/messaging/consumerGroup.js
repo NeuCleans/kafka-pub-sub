@@ -21,7 +21,7 @@ class ServiceConsumerGroup {
             return this.client;
         });
     }
-    static init(defaultTopic = 'test', defaultTopicOpts, consumerGroupOpts, clientIdPrefix, logger) {
+    static init(defaultTopic = 'default', defaultTopicOpts, consumerGroupOpts, clientIdPrefix, logger) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.client)
                 return;
@@ -29,6 +29,7 @@ class ServiceConsumerGroup {
                 log: (data) => { console.log(data); },
                 error: (error) => { console.error(error); }
             };
+            defaultTopic = (defaultTopic) ? defaultTopic : 'default';
             clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
             yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost, clientIdPrefix, logger);
             this.Logger.log('Init ConsumerGroup...');

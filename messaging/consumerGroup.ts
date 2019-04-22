@@ -18,7 +18,7 @@ export class ServiceConsumerGroup {
         return this.client;
     }
 
-    static async init(defaultTopic: string = 'test', defaultTopicOpts?: KafkaTopicConfig,
+    static async init(defaultTopic: string = 'default', defaultTopicOpts?: KafkaTopicConfig,
         consumerGroupOpts?: ConsumerGroupOptions, clientIdPrefix?: string, logger?: Logger) {
 
         if (this.client) return;
@@ -27,6 +27,8 @@ export class ServiceConsumerGroup {
             log: (data) => { console.log(data) },
             error: (error) => { console.error(error) }
         };
+
+        defaultTopic = (defaultTopic) ? defaultTopic : 'default';
 
         clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
 
