@@ -75,6 +75,24 @@ class ServiceConsumer {
             yield this._onMessage(cb, commit);
         });
     }
+    static pauseTopic(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            this.Logger.log('Consumer:pauseTopic - pausing...');
+            yield this._pauseTopic(topic);
+        });
+    }
+    static resumeTopic(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            this.Logger.log('Consumer:resumeTopic - resuming...');
+            yield this._resumeTopic(topic);
+        });
+    }
     static _onMessage(cb, commit) {
         return __awaiter(this, void 0, void 0, function* () {
             if (!this.client) {
@@ -204,6 +222,29 @@ class ServiceConsumer {
                         reject(err);
                     }
                 });
+            });
+        });
+    }
+    static _pauseTopic(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, _) => {
+                resolve(_self.client.pauseTopics([topic]));
+                ;
+            });
+        });
+    }
+    static _resumeTopic(topic) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (!this.client) {
+                yield this.init();
+            }
+            const _self = this;
+            return new Promise((resolve, _) => {
+                resolve(_self.client.resumeTopics([topic]));
             });
         });
     }

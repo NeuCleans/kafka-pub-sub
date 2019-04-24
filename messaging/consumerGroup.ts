@@ -3,7 +3,7 @@
 // https://stackoverflow.com/a/42579505/3562407 - consumergroups
 
 import { KafkaClient, ConsumerGroup, ConsumerGroupOptions } from 'kafka-node';
-import { v4 } from "uuid";
+// import { v4 } from "uuid";
 import { ServiceHLProducer } from './hlProducer';
 import { defaultKafkaConsumerGroupOpts } from './defaultOpts';
 import { KafkaTopicConfig, Logger } from './interfaces';

@@ -83,6 +83,18 @@ export class ServiceConsumer {
         await this._onMessage(cb, commit);
     }
 
+    static async pauseTopic(topic: string) {
+        if (!this.client) { await this.init(); }
+        this.Logger.log('Consumer:pauseTopic - pausing...')
+        await this._pauseTopic(topic);
+    }
+
+    static async resumeTopic(topic: string) {
+        if (!this.client) { await this.init(); }
+        this.Logger.log('Consumer:resumeTopic - resuming...')
+        await this._resumeTopic(topic);
+    }
+
     private static async _onMessage(cb: Function, commit: boolean) {
         if (!this.client) { await this.init(); }
         const _self = this;
@@ -184,6 +196,22 @@ export class ServiceConsumer {
                     reject(err);
                 }
             });
+        })
+    }
+
+    private static async _pauseTopic(topic: string) {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise<void>((resolve, _) => {
+            resolve(_self.client.pauseTopics([topic]));;
+        })
+    }
+
+    private static async _resumeTopic(topic: string) {
+        if (!this.client) { await this.init(); }
+        const _self = this;
+        return new Promise<void>((resolve, _) => {
+            resolve(_self.client.resumeTopics([topic]));
         })
     }
 }
