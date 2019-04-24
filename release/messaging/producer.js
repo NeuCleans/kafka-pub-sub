@@ -19,7 +19,7 @@ class ServiceProducer {
             return this.client;
         });
     }
-    static init(defaultTopic, kHost, clientIdPrefix, logger) {
+    static init(defaultTopic, kHost, clientId, logger) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.client)
                 return;
@@ -27,11 +27,10 @@ class ServiceProducer {
                 log: (data) => { console.log(data); },
                 error: (error) => { console.error(error); }
             };
-            clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
             this.Logger.log('Init Producer...');
             this._client = new kafka_node_1.KafkaClient({
                 kafkaHost: kHost || process.env.KAFKA_HOST,
-                clientId: `${clientIdPrefix}_${uuid_1.v4()}`
+                clientId: clientId,
             });
             this.client = new kafka_node_1.Producer(this._client, {
                 requireAcks: 1,

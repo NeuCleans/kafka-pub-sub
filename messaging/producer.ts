@@ -2,7 +2,7 @@
 // https://www.npmjs.com/package/kafka-node
 // https://github.com/SOHU-Co/kafka-node
 // https://github.com/theotow/nodejs-kafka-example
-import { KafkaClient, Producer, ProduceRequest, CreateTopicRequest } from "kafka-node";
+import { KafkaClient, Producer, ProduceRequest } from "kafka-node";
 import { v4 } from "uuid";
 import { Logger } from "./interfaces";
 
@@ -17,7 +17,7 @@ export class ServiceProducer {
         return this.client;
     }
 
-    static async init(defaultTopic?: string, kHost?: string, clientIdPrefix?: string, logger?: Logger) {
+    static async init(defaultTopic?: string, kHost?: string, clientId?: string, logger?: Logger) {
 
         if (this.client) return;
 
@@ -26,13 +26,13 @@ export class ServiceProducer {
             error: (error) => { console.error(error) }
         };
 
-        clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
+        // clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
 
         this.Logger.log('Init Producer...');
 
         this._client = new KafkaClient({
             kafkaHost: kHost || process.env.KAFKA_HOST,
-            clientId: `${clientIdPrefix}_${v4()}`
+            clientId: clientId, //`${clientIdPrefix}_${v4()}`
         });
 
         this.client = new Producer(

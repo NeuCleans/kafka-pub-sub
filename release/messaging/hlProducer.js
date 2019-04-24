@@ -20,7 +20,7 @@ class ServiceHLProducer {
             return this.client;
         });
     }
-    static init(defaultTopic, defaultTopicOpts, kHost, clientIdPrefix, logger) {
+    static init(defaultTopic, defaultTopicOpts, kHost, clientId, logger) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.client)
                 return;
@@ -28,11 +28,10 @@ class ServiceHLProducer {
                 log: (data) => { console.log(data); },
                 error: (error) => { console.error(error); }
             };
-            clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
             this.Logger.log('Init HLProducer...');
             this._client = new kafka_node_1.KafkaClient({
                 kafkaHost: kHost || process.env.KAFKA_HOST,
-                clientId: `${clientIdPrefix}_${uuid_1.v4()}`
+                clientId: clientId,
             });
             this.client = new kafka_node_1.Producer(this._client, {
                 requireAcks: 1,

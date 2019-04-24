@@ -10,7 +10,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const kafka_node_1 = require("kafka-node");
 const producer_1 = require("./producer");
-const uuid_1 = require("uuid");
 class ServiceConsumer {
     static getClient() {
         return __awaiter(this, void 0, void 0, function* () {
@@ -20,7 +19,7 @@ class ServiceConsumer {
             return this.client;
         });
     }
-    static init(defaultTopic, kHost, clientIdPrefix, logger) {
+    static init(defaultTopic, kHost, clientId, logger) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.client)
                 return;
@@ -28,12 +27,11 @@ class ServiceConsumer {
                 log: (data) => { console.log(data); },
                 error: (error) => { console.error(error); }
             };
-            clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
-            yield producer_1.ServiceProducer.init(defaultTopic, kHost, clientIdPrefix, logger);
+            yield producer_1.ServiceProducer.init(defaultTopic, kHost, clientId, logger);
             this.Logger.log('Init Consumer...');
             this._client = new kafka_node_1.KafkaClient({
                 kafkaHost: kHost || process.env.KAFKA_HOST,
-                clientId: `${clientIdPrefix}_${uuid_1.v4()}`,
+                clientId: clientId,
             });
             this.client = new kafka_node_1.Consumer(this._client, [], {
                 autoCommit: false,

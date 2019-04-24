@@ -19,7 +19,7 @@ export class ServiceConsumerGroup {
     }
 
     static async init(defaultTopic: string = 'default', defaultTopicOpts?: KafkaTopicConfig,
-        consumerGroupOpts?: ConsumerGroupOptions, clientIdPrefix?: string, logger?: Logger) {
+        consumerGroupOpts?: ConsumerGroupOptions, clientId?: string, logger?: Logger) {
 
         if (this.client) return;
 
@@ -30,15 +30,15 @@ export class ServiceConsumerGroup {
 
         defaultTopic = (defaultTopic) ? defaultTopic : 'default';
 
-        clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
+        // clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
 
-        await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost, clientIdPrefix, logger);
+        await ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost, clientId, logger);
 
         this.Logger.log('Init ConsumerGroup...');
 
         this._client = new KafkaClient({
             kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
-            clientId: `${clientIdPrefix}_${v4()}`
+            clientId: clientId, //`${clientIdPrefix}_${v4()}`
         });
 
         // https://github.com/SOHU-Co/kafka-node#consumergroupoptions-topics

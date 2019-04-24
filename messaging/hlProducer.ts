@@ -19,7 +19,7 @@ export class ServiceHLProducer {
     }
 
     static async init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig,
-        kHost?: string, clientIdPrefix?: string, logger?: Logger) {
+        kHost?: string, clientId?: string, logger?: Logger) {
 
         if (this.client) return;
 
@@ -28,13 +28,13 @@ export class ServiceHLProducer {
             error: (error) => { console.error(error) }
         };
 
-        clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
+        // clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
 
         this.Logger.log('Init HLProducer...');
 
         this._client = new KafkaClient({
             kafkaHost: kHost || process.env.KAFKA_HOST,
-            clientId: `${clientIdPrefix}_${v4()}`
+            clientId: clientId, //`${clientIdPrefix}_${v4()}`
         });
 
         this.client = new Producer(

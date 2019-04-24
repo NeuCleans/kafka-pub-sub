@@ -9,7 +9,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const kafka_node_1 = require("kafka-node");
-const uuid_1 = require("uuid");
 const hlProducer_1 = require("./hlProducer");
 const defaultOpts_1 = require("./defaultOpts");
 class ServiceConsumerGroup {
@@ -21,7 +20,7 @@ class ServiceConsumerGroup {
             return this.client;
         });
     }
-    static init(defaultTopic = 'default', defaultTopicOpts, consumerGroupOpts, clientIdPrefix, logger) {
+    static init(defaultTopic = 'default', defaultTopicOpts, consumerGroupOpts, clientId, logger) {
         return __awaiter(this, void 0, void 0, function* () {
             if (this.client)
                 return;
@@ -30,12 +29,11 @@ class ServiceConsumerGroup {
                 error: (error) => { console.error(error); }
             };
             defaultTopic = (defaultTopic) ? defaultTopic : 'default';
-            clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
-            yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost, clientIdPrefix, logger);
+            yield hlProducer_1.ServiceHLProducer.init(defaultTopic, defaultTopicOpts, consumerGroupOpts.kafkaHost, clientId, logger);
             this.Logger.log('Init ConsumerGroup...');
             this._client = new kafka_node_1.KafkaClient({
                 kafkaHost: consumerGroupOpts.kafkaHost || process.env.KAFKA_HOST,
-                clientId: `${clientIdPrefix}_${uuid_1.v4()}`
+                clientId: clientId,
             });
             consumerGroupOpts = (consumerGroupOpts) ? Object.assign({}, defaultOpts_1.defaultKafkaConsumerGroupOpts, consumerGroupOpts) : defaultOpts_1.defaultKafkaConsumerGroupOpts;
             this.client = new kafka_node_1.ConsumerGroup(consumerGroupOpts, [defaultTopic]);

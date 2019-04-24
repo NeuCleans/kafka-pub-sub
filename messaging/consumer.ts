@@ -4,7 +4,7 @@
 
 import { KafkaClient, Consumer } from 'kafka-node';
 import { ServiceProducer } from './producer';
-import { v4 } from "uuid";
+// import { v4 } from "uuid";
 import { Logger } from './interfaces';
 
 export class ServiceConsumer {
@@ -17,7 +17,7 @@ export class ServiceConsumer {
         return this.client;
     }
 
-    static async init(defaultTopic?: string, kHost?: string, clientIdPrefix?: string, logger?: Logger) {
+    static async init(defaultTopic?: string, kHost?: string, clientId?: string, logger?: Logger) {
 
         if (this.client) return;
 
@@ -26,15 +26,15 @@ export class ServiceConsumer {
             error: (error) => { console.error(error) }
         };
 
-        clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
+        // clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
 
-        await ServiceProducer.init(defaultTopic, kHost, clientIdPrefix, logger);
+        await ServiceProducer.init(defaultTopic, kHost, clientId, logger);
 
         this.Logger.log('Init Consumer...');
 
         this._client = new KafkaClient({
             kafkaHost: kHost || process.env.KAFKA_HOST,
-            clientId: `${clientIdPrefix}_${v4()}`,
+            clientId: clientId,// `${clientIdPrefix}_${v4()}`,
             // requestTimeout: 9999999
         });
         this.client = new Consumer(
