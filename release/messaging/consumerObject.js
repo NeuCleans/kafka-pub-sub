@@ -10,43 +10,27 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const kafka_node_1 = require("kafka-node");
 const producer_1 = require("./producer");
-class ServiceConsumer {
-    static getClient() {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
-            return this.client;
+class ServiceConsumerObject {
+    constructor(kHost, clientId, logger) {
+        if (this.client)
+            return;
+        this.Logger = (logger) ? logger : {
+            log: (data) => { console.log(data); },
+            error: (error) => { console.error(error); }
+        };
+        this.Logger.log('Init Consumer...');
+        this._client = new kafka_node_1.KafkaClient({
+            kafkaHost: kHost || process.env.KAFKA_HOST,
+            clientId: clientId,
+        });
+        this.client = new kafka_node_1.Consumer(this._client, [], {
+            autoCommit: false,
+            fromOffset: true
         });
     }
-    static init(defaultTopic, kHost, clientId, logger) {
+    subscribe(topic) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (this.client)
-                return;
-            this.Logger = (logger) ? logger : {
-                log: (data) => { console.log(data); },
-                error: (error) => { console.error(error); }
-            };
-            yield producer_1.ServiceProducer.init(defaultTopic, kHost, clientId, logger);
-            this.Logger.log('Init Consumer...');
-            this._client = new kafka_node_1.KafkaClient({
-                kafkaHost: kHost || process.env.KAFKA_HOST,
-                clientId: clientId,
-            });
-            this.client = new kafka_node_1.Consumer(this._client, [], {
-                autoCommit: false,
-                fromOffset: true
-            });
             yield this._onReady();
-            if (defaultTopic)
-                yield this.subscribe(defaultTopic);
-        });
-    }
-    static subscribe(topic) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             try {
                 yield this._topicExists(topic);
             }
@@ -56,48 +40,39 @@ class ServiceConsumer {
             yield this._addTopic(topic);
         });
     }
-    static commit(cb) {
+    commit(cb) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             yield this._commit();
             if (cb)
                 cb();
         });
     }
-    static listen(cb, commit = true) {
+    listen(cb, commit = true) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             this.Logger.log('Consumer:listen - listening...');
             yield this._onMessage(cb, commit);
         });
     }
-    static pauseTopic(topic) {
+    pauseTopic(topic) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             this.Logger.log('Consumer:pauseTopic - pausing...');
             yield this._pauseTopic(topic);
         });
     }
-    static resumeTopic(topic) {
+    resumeTopic(topic) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             this.Logger.log('Consumer:resumeTopic - resuming...');
             yield this._resumeTopic(topic);
         });
     }
-    static _onMessage(cb, commit) {
+    close() {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
+            this.Logger.log('Consumer:close - closing...');
+            yield this._close();
+        });
+    }
+    _onMessage(cb, commit) {
+        return __awaiter(this, void 0, void 0, function* () {
             const _self = this;
             return new Promise((resolve, reject) => {
                 _self.client.on('message', (message) => __awaiter(this, void 0, void 0, function* () {
@@ -115,11 +90,8 @@ class ServiceConsumer {
             });
         });
     }
-    static onError(cb) {
+    onError(cb) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             const _self = this;
             this.Logger.log('Consumer:onError - listening for errors...');
             return new Promise((resolve, reject) => {
@@ -130,11 +102,8 @@ class ServiceConsumer {
             });
         });
     }
-    static _onReady() {
+    _onReady() {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             const _self = this;
             return new Promise((resolve, reject) => {
                 _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
@@ -144,12 +113,9 @@ class ServiceConsumer {
             });
         });
     }
-    static _addTopic(topic) {
+    _addTopic(topic) {
         return __awaiter(this, void 0, void 0, function* () {
             topic = Array.isArray(topic) ? topic : [topic];
-            if (!this.client) {
-                yield this.init();
-            }
             const _self = this;
             return new Promise((resolve, reject) => {
                 _self.client.addTopics(topic, (err, data) => {
@@ -165,11 +131,8 @@ class ServiceConsumer {
             });
         });
     }
-    static _topicExists(topic) {
+    _topicExists(topic) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             const _self = this;
             return new Promise((resolve, reject) => {
                 _self._client.topicExists([topic], (err) => {
@@ -185,11 +148,8 @@ class ServiceConsumer {
             });
         });
     }
-    static _refreshMetadata(topic) {
+    _refreshMetadata(topic) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             const _self = this;
             return new Promise((resolve, reject) => {
                 _self._client.refreshMetadata([topic], (err) => {
@@ -205,11 +165,8 @@ class ServiceConsumer {
             });
         });
     }
-    static _commit() {
+    _commit() {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             const _self = this;
             return new Promise((resolve, reject) => {
                 _self.client.commit((err, data) => {
@@ -225,11 +182,8 @@ class ServiceConsumer {
             });
         });
     }
-    static _pauseTopic(topic) {
+    _pauseTopic(topic) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             const _self = this;
             return new Promise((resolve, _) => {
                 resolve(_self.client.pauseTopics([topic]));
@@ -237,17 +191,29 @@ class ServiceConsumer {
             });
         });
     }
-    static _resumeTopic(topic) {
+    _resumeTopic(topic) {
         return __awaiter(this, void 0, void 0, function* () {
-            if (!this.client) {
-                yield this.init();
-            }
             const _self = this;
             return new Promise((resolve, _) => {
                 resolve(_self.client.resumeTopics([topic]));
             });
         });
     }
+    _close() {
+        return __awaiter(this, void 0, void 0, function* () {
+            const _self = this;
+            return new Promise((resolve, reject) => {
+                resolve(_self.client.close((error) => {
+                    if (error) {
+                        reject(error);
+                    }
+                    else {
+                        resolve();
+                    }
+                }));
+            });
+        });
+    }
 }
-exports.ServiceConsumer = ServiceConsumer;
-//# sourceMappingURL=consumer.js.map
+exports.ServiceConsumerObject = ServiceConsumerObject;
+//# sourceMappingURL=consumerObject.js.map

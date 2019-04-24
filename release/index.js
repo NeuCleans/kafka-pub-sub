@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const consumer_1 = require("./messaging/consumer");
 exports.ServiceConsumer = consumer_1.ServiceConsumer;
+const consumerObject_1 = require("./messaging/consumerObject");
+exports.ServiceConsumerObject = consumerObject_1.ServiceConsumerObject;
 const producer_1 = require("./messaging/producer");
 exports.ServiceProducer = producer_1.ServiceProducer;
 const consumerGroup_1 = require("./messaging/consumerGroup");

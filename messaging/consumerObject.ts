@@ -7,17 +7,12 @@ import { ServiceProducer } from './producer';
 // import { v4 } from "uuid";
 import { Logger } from './interfaces';
 
-export class ServiceConsumer {
-    private static Logger: Logger;
-    private static client: Consumer;
-    private static _client: KafkaClient;
+export class ServiceConsumerObject {
+    private Logger: Logger;
+    private client: Consumer;
+    private _client: KafkaClient;
 
-    static async getClient() {
-        if (!this.client) { await this.init(); }
-        return this.client;
-    }
-
-    static async init(defaultTopic?: string, kHost?: string, clientId?: string, logger?: Logger) {
+    constructor(kHost?: string, clientId?: string, logger?: Logger) {
 
         if (this.client) return;
 
@@ -27,8 +22,6 @@ export class ServiceConsumer {
         };
 
         // clientIdPrefix = (clientIdPrefix) ? clientIdPrefix : "TEST";
-
-        await ServiceProducer.init(defaultTopic, kHost, clientId, logger);
 
         this.Logger.log('Init Consumer...');
 
@@ -44,13 +37,11 @@ export class ServiceConsumer {
                 autoCommit: false,
                 fromOffset: true
             });
-
-        await this._onReady();
-        if (defaultTopic) await this.subscribe(defaultTopic);
     }
 
-    static async subscribe(topic: string) {
-        if (!this.client) { await this.init(); }
+    async subscribe(topic: string) {
+        await this._onReady();
+
         try {
             await this._topicExists(topic);
         } catch (error) { // topic does not exist
@@ -61,8 +52,7 @@ export class ServiceConsumer {
         // await _self.addTopic([{ topic: topic, partition: 0, offset: 0 }]);
     }
 
-    static async commit(cb?: Function) {
-        if (!this.client) { await this.init(); }
+    async commit(cb?: Function) {
         await this._commit();
         if (cb) cb();
     }
@@ -70,32 +60,32 @@ export class ServiceConsumer {
     /**
      *
      *
-     * @static
      * @param {(message) => any} cb
      * @param {boolean} [commit=true]
      * If you set commit to false, you are in charge of calling ServiceConsumer.commit(); likely in your message callback
      * @memberof ServiceConsumer
      */
-    static async listen(cb: (message) => any, commit: boolean = true) {
-        if (!this.client) { await this.init(); }
+    async listen(cb: (message) => any, commit: boolean = true) {
         this.Logger.log('Consumer:listen - listening...')
         await this._onMessage(cb, commit);
     }
 
-    static async pauseTopic(topic: string) {
-        if (!this.client) { await this.init(); }
+    async pauseTopic(topic: string) {
         this.Logger.log('Consumer:pauseTopic - pausing...')
         await this._pauseTopic(topic);
     }
 
-    static async resumeTopic(topic: string) {
-        if (!this.client) { await this.init(); }
+    async resumeTopic(topic: string) {
         this.Logger.log('Consumer:resumeTopic - resuming...')
         await this._resumeTopic(topic);
     }
 
-    private static async _onMessage(cb: Function, commit: boolean) {
-        if (!this.client) { await this.init(); }
+    async close() {
+        this.Logger.log('Consumer:close - closing...')
+        await this._close();
+    }
+
+    private async _onMessage(cb: Function, commit: boolean) {
         const _self = this;
         return new Promise((resolve, reject) => {
             _self.client.on('message', async (message) => {
@@ -110,8 +100,7 @@ export class ServiceConsumer {
         })
     }
 
-    static async onError(cb?: Function) {
-        if (!this.client) { await this.init(); }
+    async onError(cb?: Function) {
         const _self = this;
         this.Logger.log('Consumer:onError - listening for errors...')
         return new Promise((resolve, reject) => {
@@ -122,8 +111,7 @@ export class ServiceConsumer {
         })
     }
 
-    private static async _onReady() {
-        if (!this.client) { await this.init(); }
+    private async _onReady() {
         const _self = this;
         return new Promise((resolve, reject) => {
             _self._client.on('ready', async () => {
@@ -133,9 +121,8 @@ export class ServiceConsumer {
         })
     }
 
-    private static async _addTopic(topic: any) {
+    private async _addTopic(topic: any) {
         topic = Array.isArray(topic) ? topic : [topic];
-        if (!this.client) { await this.init(); }
         const _self = this;
         return new Promise((resolve, reject) => {
             _self.client.addTopics(topic, (err, data) => {
@@ -150,8 +137,7 @@ export class ServiceConsumer {
         });
     }
 
-    private static async _topicExists(topic: string) {
-        if (!this.client) { await this.init(); }
+    private async _topicExists(topic: string) {
         const _self = this;
         return new Promise((resolve, reject) => {
             _self._client.topicExists([topic], (err) => {
@@ -166,8 +152,7 @@ export class ServiceConsumer {
         })
     }
 
-    private static async _refreshMetadata(topic: string) {
-        if (!this.client) { await this.init(); }
+    private async _refreshMetadata(topic: string) {
         const _self = this;
         return new Promise((resolve, reject) => {
             _self._client.refreshMetadata([topic], (err) => {
@@ -182,8 +167,7 @@ export class ServiceConsumer {
         })
     }
 
-    private static async _commit() {
-        if (!this.client) { await this.init(); }
+    private async _commit() {
         const _self = this;
         return new Promise((resolve, reject) => {
             _self.client.commit((err, data) => {
@@ -198,19 +182,30 @@ export class ServiceConsumer {
         })
     }
 
-    private static async _pauseTopic(topic: string) {
-        if (!this.client) { await this.init(); }
+    private async _pauseTopic(topic: string) {
         const _self = this;
         return new Promise<void>((resolve, _) => {
             resolve(_self.client.pauseTopics([topic]));;
         })
     }
 
-    private static async _resumeTopic(topic: string) {
-        if (!this.client) { await this.init(); }
+    private async _resumeTopic(topic: string) {
         const _self = this;
         return new Promise<void>((resolve, _) => {
             resolve(_self.client.resumeTopics([topic]));
+        })
+    }
+
+    private async _close() {
+        const _self = this;
+        return new Promise<void>((resolve, reject) => {
+            resolve(_self.client.close((error) => {
+                if (error) {
+                    reject(error);
+                } else {
+                    resolve();
+                }
+            }));
         })
     }
 }
