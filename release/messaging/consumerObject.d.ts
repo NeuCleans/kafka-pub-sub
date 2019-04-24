@@ -3,6 +3,7 @@ export declare class ServiceConsumerObject {
     private Logger;
     private client;
     private _client;
+    private isReady;
     constructor(kHost?: string, clientId?: string, logger?: Logger);
     subscribe(topic: string): Promise<void>;
     commit(cb?: Function): Promise<void>;

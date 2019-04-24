@@ -11,6 +11,7 @@ export class ServiceConsumerObject {
     private Logger: Logger;
     private client: Consumer;
     private _client: KafkaClient;
+    private isReady: boolean = false;
 
     constructor(kHost?: string, clientId?: string, logger?: Logger) {
 
@@ -40,8 +41,7 @@ export class ServiceConsumerObject {
     }
 
     async subscribe(topic: string) {
-        await this._onReady();
-
+        if (!this.isReady) { await this._onReady(); }
         try {
             await this._topicExists(topic);
         } catch (error) { // topic does not exist
@@ -66,16 +66,19 @@ export class ServiceConsumerObject {
      * @memberof ServiceConsumer
      */
     async listen(cb: (message) => any, commit: boolean = true) {
+        if (!this.isReady) { await this._onReady(); }
         this.Logger.log('Consumer:listen - listening...')
         await this._onMessage(cb, commit);
     }
 
     async pauseTopic(topic: string) {
+        if (!this.isReady) { await this._onReady(); }
         this.Logger.log('Consumer:pauseTopic - pausing...')
         await this._pauseTopic(topic);
     }
 
     async resumeTopic(topic: string) {
+        if (!this.isReady) { await this._onReady(); }
         this.Logger.log('Consumer:resumeTopic - resuming...')
         await this._resumeTopic(topic);
     }
@@ -116,7 +119,7 @@ export class ServiceConsumerObject {
         return new Promise((resolve, reject) => {
             _self._client.on('ready', async () => {
                 _self.Logger.log(`Consumer:onReady - Ready...`);
-                resolve();
+                resolve(_self.isReady = true);
             });
         })
     }

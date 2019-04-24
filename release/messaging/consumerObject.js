@@ -12,6 +12,7 @@ const kafka_node_1 = require("kafka-node");
 const producer_1 = require("./producer");
 class ServiceConsumerObject {
     constructor(kHost, clientId, logger) {
+        this.isReady = false;
         if (this.client)
             return;
         this.Logger = (logger) ? logger : {
@@ -30,7 +31,9 @@ class ServiceConsumerObject {
     }
     subscribe(topic) {
         return __awaiter(this, void 0, void 0, function* () {
-            yield this._onReady();
+            if (!this.isReady) {
+                yield this._onReady();
+            }
             try {
                 yield this._topicExists(topic);
             }
@@ -49,18 +52,27 @@ class ServiceConsumerObject {
     }
     listen(cb, commit = true) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (!this.isReady) {
+                yield this._onReady();
+            }
             this.Logger.log('Consumer:listen - listening...');
             yield this._onMessage(cb, commit);
         });
     }
     pauseTopic(topic) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (!this.isReady) {
+                yield this._onReady();
+            }
             this.Logger.log('Consumer:pauseTopic - pausing...');
             yield this._pauseTopic(topic);
         });
     }
     resumeTopic(topic) {
         return __awaiter(this, void 0, void 0, function* () {
+            if (!this.isReady) {
+                yield this._onReady();
+            }
             this.Logger.log('Consumer:resumeTopic - resuming...');
             yield this._resumeTopic(topic);
         });
@@ -108,7 +120,7 @@ class ServiceConsumerObject {
             return new Promise((resolve, reject) => {
                 _self._client.on('ready', () => __awaiter(this, void 0, void 0, function* () {
                     _self.Logger.log(`Consumer:onReady - Ready...`);
-                    resolve();
+                    resolve(_self.isReady = true);
                 }));
             });
         });
