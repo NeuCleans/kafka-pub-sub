@@ -5,7 +5,7 @@ export declare class ServiceConsumerGroup {
     private static client;
     private static _client;
     static getClient(): Promise<ConsumerGroup>;
-    static init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig, consumerGroupOpts?: ConsumerGroupOptions, clientIdPrefix?: string, logger?: Logger): Promise<void>;
+    static init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig, consumerGroupOpts?: ConsumerGroupOptions, clientId?: string, logger?: Logger): Promise<void>;
     static subscribe(topic: string): Promise<void>;
     static commit(cb?: Function): Promise<void>;
     static listen(cb: (message: any) => any, commit?: boolean): Promise<void>;

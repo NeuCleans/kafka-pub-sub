@@ -7,7 +7,7 @@ export declare class ServiceHLProducer {
     private static _client;
     static isConnected: boolean;
     static getClient(): Promise<Producer>;
-    static init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig, kHost?: string, clientIdPrefix?: string, logger?: Logger): Promise<void>;
+    static init(defaultTopic?: string, defaultTopicOpts?: KafkaTopicConfig, kHost?: string, clientId?: string, logger?: Logger): Promise<void>;
     static prepareMsgBuffer(data: any, action?: string, opts?: Object): Buffer;
     static buildAMessageObject(data: any, toTopic: string, fromTopic?: string, action?: string, opts?: Object): Promise<ProduceRequest>;
     static createTopic(topic: string, kafkaTopicConfig?: KafkaTopicConfig): Promise<void>;
